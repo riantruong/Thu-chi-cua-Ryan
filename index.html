@@ -27,7 +27,7 @@
             </div>
             <div class="header-actions">
                 <button id="btnManageProducts" class="btn btn-secondary">
-                    <i class="ri-shopping-bag-3-line"></i> Danh Mục Sản Phẩm
+                    <i class="ri-shopping-bag-3-line"></i> Danh Mục Tài Liệu
                 </button>
                 <button id="btnSampleData" class="btn btn-outline" title="Tải dữ liệu mẫu thử nghiệm">
                     <i class="ri-magic-line"></i> Dữ Liệu Mẫu
@@ -110,7 +110,7 @@
             <!-- 1. ENTRY FORM CARD (BƯỚC 1 NHẬP TÊN + BƯỚC 2 CHỌN SẢN PHẨM) -->
             <section class="card form-card glass shadow-md">
                 <div class="card-header">
-                    <h2><i class="ri-user-add-line"></i> <span id="formTitle">Nhập Thu Chi Theo Người</span></h2>
+                    <h2><i class="ri-user-add-line"></i> <span id="formTitle">Nhập Dữ Liệu</span></h2>
                     <button type="button" id="btnCancelEdit" class="btn btn-sm btn-ghost hidden">
                         <i class="ri-close-line"></i> Hủy sửa
                     </button>
@@ -225,7 +225,7 @@
             <!-- 2. PRODUCT QUANTITY BREAKDOWN SECTION -->
             <section class="product-stats-card glass shadow-sm">
                 <div class="product-stats-header">
-                    <h3><i class="ri-book-read-line"></i> Thống Kê Số Lượng Từng Loại Tài Liệu / Sản Phẩm Đã Bán</h3>
+                    <h3><i class="ri-book-read-line"></i> Thống Kê Số Lượng Tài Liệu</h3>
                     <span class="badge badge-info" id="totalItemsSoldBadge">0 bản đã bán</span>
                 </div>
                 <div class="product-stats-grid" id="productStatsGrid">
@@ -297,13 +297,13 @@
     <div class="modal-backdrop hidden" id="modalManageProducts">
         <div class="modal-content glass shadow-lg">
             <div class="modal-header">
-                <h3><i class="ri-shopping-bag-3-line"></i> Quản Lý Danh Mục Sản Phẩm & Giá</h3>
+                <h3><i class="ri-book-open-line"></i> Quản Lý Danh Mục Tài Liệu & Giá</h3>
                 <button class="btn-close" id="btnCloseProductModal"><i class="ri-close-line"></i></button>
             </div>
             <div class="modal-body">
                 <form id="newProductForm" class="inline-form">
                     <div class="form-group flex-1">
-                        <input type="text" id="newProductName" class="form-control" placeholder="Tên sản phẩm / khoản thu..." required>
+                        <input type="text" id="newProductName" class="form-control" placeholder="Tên tài liệu / giáo trình..." required>
                     </div>
                     <div class="form-group flex-1">
                         <input type="number" id="newProductPrice" class="form-control" placeholder="Đơn giá (VNĐ)..." required min="0" step="1000">
