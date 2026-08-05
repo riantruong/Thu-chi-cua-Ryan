@@ -1,3 +1,23 @@
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js';
+import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js';
+
+const firebaseConfig = {
+    apiKey: 'AIzaSyDswoYo3Ah48DvHKcYYB8DgjK2BnBbEh1w',
+    authDomain: 'quan-ly-thu-chi-cua-ryan.firebaseapp.com',
+    projectId: 'quan-ly-thu-chi-cua-ryan',
+    storageBucket: 'quan-ly-thu-chi-cua-ryan.firebasestorage.app',
+    messagingSenderId: '1022232149668',
+    appId: '1:1022232149668:web:15081932d1e77b3f9c7031',
+    measurementId: 'G-BKHRJWRYL7'
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const firestoreDb = getFirestore(firebaseApp);
+const sharedDataRef = doc(firestoreDb, 'sharedData', 'budget');
+let cloudReady = false;
+let applyingCloudUpdate = false;
+let cloudSaveTimer;
+
 /**
  * Smart Payment Tracker - Javascript Logic
  * Application to track payments, product checkboxes, paid/unpaid status, and payment methods.
@@ -131,6 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEventListeners();
     toggleStep2Accordion();
+    startCloudSync();
 });
 
 // ==========================================
@@ -152,6 +173,7 @@ function loadProducts() {
 
 function saveProducts() {
     localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
+    scheduleCloudSave();
 }
 
 function loadTransactions() {
@@ -170,10 +192,62 @@ function loadTransactions() {
 
 function saveTransactions() {
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+    scheduleCloudSave();
 }
 
 // ==========================================
-// 5. FORMATTERS & UTILS
+// 5. CLOUD SYNCHRONIZATION
+// ==========================================
+function startCloudSync() {
+    onSnapshot(sharedDataRef, (snapshot) => {
+        cloudReady = true;
+
+        if (!snapshot.exists()) {
+            scheduleCloudSave();
+            return;
+        }
+
+        const cloudData = snapshot.data();
+        if (!Array.isArray(cloudData.products) || !Array.isArray(cloudData.transactions)) return;
+
+        applyingCloudUpdate = true;
+        productsCatalog = cloudData.products;
+        transactions = cloudData.transactions;
+        localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+
+        renderProductSelectionForm();
+        renderTransactionsTable();
+        updateDashboardStats();
+        updatePersonSuggestions();
+        if (!modalManageProducts.classList.contains('hidden')) renderCatalogModalList();
+        applyingCloudUpdate = false;
+    }, (error) => {
+        console.error('Firestore sync error:', error);
+        showToast('KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘á»“ng bá»™ dá»¯ liá»‡u. Kiá»ƒm tra Cloud Firestore vÃ  quy tắc truy cáº­p.', 'danger');
+    });
+}
+
+function scheduleCloudSave() {
+    if (!cloudReady || applyingCloudUpdate) return;
+
+    clearTimeout(cloudSaveTimer);
+    cloudSaveTimer = setTimeout(async () => {
+        try {
+            await setDoc(sharedDataRef, {
+                products: productsCatalog,
+                transactions,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error('Firestore save error:', error);
+            showToast('LÆ°u dá»¯ liá»‡u Ä‘á»“ng bá»™ tháº¥t báº¡i.', 'danger');
+        }
+    }, 350);
+}
+
+// ==========================================
+// 6. FORMATTERS & UTILS
 // ==========================================
 function formatCurrency(amount) {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
