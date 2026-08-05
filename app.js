@@ -553,14 +553,16 @@ function updateProductStatsBreakdown() {
         const itemCard = document.createElement('div');
         itemCard.className = 'prod-stat-item';
         itemCard.innerHTML = `
-            <div class="prod-stat-title">${stat.name}</div>
-            <div class="prod-stat-count">
-                <span class="prod-stat-qty">${stat.totalQty} <small style="font-size:12px; font-weight:500;">bản</small></span>
-                <span style="font-weight:700; color:var(--primary); font-size:13px;">${formatCurrency(stat.revenue)}</span>
+            <div class="prod-stat-left">
+                <div class="prod-stat-title" title="${stat.name}">${stat.name}</div>
+                <div class="prod-stat-sub">
+                    <span class="text-success">✅ Đã thu: ${stat.paidQty}</span> | 
+                    <span class="text-danger">⏳ Nợ: ${stat.unpaidQty}</span>
+                </div>
             </div>
-            <div class="prod-stat-sub">
-                <span class="text-success">✅ Đã thu: ${stat.paidQty}</span> | 
-                <span class="text-danger">⏳ Nợ: ${stat.unpaidQty}</span>
+            <div class="prod-stat-right">
+                <div class="prod-stat-qty">${stat.totalQty} <small style="font-size:11px; font-weight:500;">bản</small></div>
+                <div style="font-size:11px; font-weight:700; color:var(--primary);">${formatCurrency(stat.revenue)}</div>
             </div>
         `;
         productStatsGrid.appendChild(itemCard);
