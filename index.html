@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thu Chi DH25TIN03 - Quản Lý Đóng Tiền & Mua Tài Liệu</title>
+    <meta name="description" content="Ứng dụng quản lý thu chi, tích chọn sản phẩm theo người lớp DH25TIN03.">
+    <!-- Google Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="light-mode">
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="logo-icon">
+                    <i class="ri-wallet-3-line"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Thu Chi DH25TIN03</h1>
+                    <p>Quản lý đóng tiền & chọn mua tài liệu lớp DH25TIN03</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button id="btnManageProducts" class="btn btn-secondary">
+                    <i class="ri-shopping-bag-3-line"></i> Danh Mục Sản Phẩm
+                </button>
+                <button id="btnSampleData" class="btn btn-outline" title="Tải dữ liệu mẫu thử nghiệm">
+                    <i class="ri-magic-line"></i> Dữ Liệu Mẫu
+                </button>
+                <button id="btnExportCSV" class="btn btn-outline">
+                    <i class="ri-file-excel-line"></i> Xuất Excel/CSV
+                </button>
+                <button id="btnThemeToggle" class="btn btn-icon" title="Đổi giao diện sáng/tối">
+                    <i class="ri-moon-line" id="themeIcon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD STATS -->
+        <section class="stats-grid">
+            <div class="stat-card glass shadow-sm">
+                <div class="stat-icon icon-primary">
+                    <i class="ri-money-dollar-circle-line"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Tổng Giá Trị Giao Dịch</span>
+                    <h3 id="statTotalAmount" class="stat-value">0 VNĐ</h3>
+                    <span class="stat-sub" id="statTotalCount">0 lượt ghi nhận</span>
+                </div>
+            </div>
+
+            <div class="stat-card glass shadow-sm">
+                <div class="stat-icon icon-success">
+                    <i class="ri-checkbox-circle-line"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Đã Đóng Tiền</span>
+                    <h3 id="statPaidAmount" class="stat-value text-success">0 VNĐ</h3>
+                    <span class="stat-sub" id="statPaidCount">0 người đã hoàn thành</span>
+                </div>
+            </div>
+
+            <div class="stat-card glass shadow-sm">
+                <div class="stat-icon icon-danger">
+                    <i class="ri-error-warning-line"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Chưa Đóng Tiền (Còn Nợ)</span>
+                    <h3 id="statUnpaidAmount" class="stat-value text-danger">0 VNĐ</h3>
+                    <span class="stat-sub" id="statUnpaidCount">0 người chưa đóng</span>
+                </div>
+            </div>
+
+            <div class="stat-card glass shadow-sm">
+                <div class="stat-icon icon-info">
+                    <i class="ri-exchange-funds-line"></i>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Hình Thức Thanh Toán</span>
+                    <div class="method-breakdown">
+                        <div class="method-item">
+                            <i class="ri-bank-card-line text-bank"></i> CK: <strong id="statBankAmount">0 VNĐ</strong>
+                        </div>
+                        <div class="method-item">
+                            <i class="ri-cash-line text-cash"></i> Tiền mặt: <strong id="statCashAmount">0 VNĐ</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROGRESS BAR -->
+        <div class="progress-section glass shadow-sm">
+            <div class="progress-header">
+                <span>Tiến độ thu tiền tổng quan</span>
+                <strong id="progressPercentText">0%</strong>
+            </div>
+            <div class="progress-bar-bg">
+                <div id="progressBarFill" class="progress-bar-fill" style="width: 0%;"></div>
+            </div>
+        </div>
+
+        <!-- MAIN LAYOUT: FORM & LIST STACKED VERTICALLY -->
+        <main class="main-content">
+            <!-- 1. ENTRY FORM CARD (BƯỚC 1 NHẬP TÊN + BƯỚC 2 CHỌN SẢN PHẨM) -->
+            <section class="card form-card glass shadow-md">
+                <div class="card-header">
+                    <h2><i class="ri-user-add-line"></i> <span id="formTitle">Nhập Thu Chi Theo Người</span></h2>
+                    <button type="button" id="btnCancelEdit" class="btn btn-sm btn-ghost hidden">
+                        <i class="ri-close-line"></i> Hủy sửa
+                    </button>
+                </div>
+
+                <form id="transactionForm" autocomplete="off">
+                    <input type="hidden" id="editTransactionId" value="">
+
+                    <!-- 1. TÊN NGƯỜI - BƯỚC 1 (NỔI BẬT) -->
+                    <div class="form-group step-card-hero">
+                        <label for="personName" class="form-label required form-label-lg">
+                            <span class="step-number">1</span>
+                            <i class="ri-user-3-fill"></i> Tên người mua / đóng tiền:
+                        </label>
+                        <div class="input-with-icon">
+                            <input type="text" id="personName" class="form-control form-control-hero" placeholder="👉 Nhập tên người tại đây (Ví dụ: Nguyễn Văn An)..." required list="personSuggestions">
+                            <i class="ri-user-heart-line input-icon hero-icon"></i>
+                        </div>
+                        <div id="personInputHint" class="person-hint">
+                            <i class="ri-corner-down-right-line"></i> Nhập tên người ở trên để mở danh sách sản phẩm tích chọn
+                        </div>
+                        <datalist id="personSuggestions"></datalist>
+                    </div>
+
+                    <!-- STEP 2 CONTAINER (TỰ ĐỘNG SỔ RA KHÁM PHÁ KHI ĐÃ NHẬP TÊN) -->
+                    <div id="step2Container" class="step2-accordion collapsed">
+                        <div class="step2-divider">
+                            <span class="step-number step-number-sub">2</span>
+                            <span>Tích chọn sản phẩm mua & Trạng thái thanh toán</span>
+                        </div>
+
+                        <!-- 2. TÍCH CHỌN SẢN PHẨM MUA -->
+                        <div class="form-group">
+                            <div class="products-header">
+                                <label class="form-label required">
+                                    <i class="ri-shopping-basket-2-line"></i> Tích chọn các mục / sản phẩm mua:
+                                </label>
+                                <button type="button" id="btnQuickAddProduct" class="btn-link">
+                                    <i class="ri-add-circle-line"></i> Thêm mục mới
+                                </button>
+                            </div>
+                            <div class="product-selection-box" id="productSelectionList">
+                                <!-- JS sẽ load danh sách sản phẩm có tickbox ở đây -->
+                            </div>
+                        </div>
+
+                        <!-- TOTAL DISPLAY BADGE -->
+                        <div class="total-calculator-banner">
+                            <span>Tổng tiền tính tự động:</span>
+                            <span id="formCalculatedTotal" class="total-amount-highlight">0 VNĐ</span>
+                        </div>
+
+                        <div class="form-row">
+                            <!-- 3. ĐÃ ĐÓNG HAY CHƯA ĐÓNG -->
+                            <div class="form-group col-6">
+                                <label class="form-label required"><i class="ri-checkbox-circle-line"></i> Trạng thái đóng tiền:</label>
+                                <div class="segmented-control">
+                                    <label class="segment-option option-paid">
+                                        <input type="radio" name="paymentStatus" value="paid" checked>
+                                        <span class="segment-btn">
+                                            <i class="ri-check-line"></i> Đã đóng tiền
+                                        </span>
+                                    </label>
+                                    <label class="segment-option option-unpaid">
+                                        <input type="radio" name="paymentStatus" value="unpaid">
+                                        <span class="segment-btn">
+                                            <i class="ri-time-line"></i> Chưa đóng tiền
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 4. CHUYỂN KHOẢN HAY TIỀN MẶT -->
+                            <div class="form-group col-6">
+                                <label class="form-label required"><i class="ri-wallet-line"></i> Hình thức thanh toán:</label>
+                                <div class="segmented-control">
+                                    <label class="segment-option option-bank">
+                                        <input type="radio" name="paymentMethod" value="bank" checked>
+                                        <span class="segment-btn">
+                                            <i class="ri-bank-card-line"></i> Chuyển khoản
+                                        </span>
+                                    </label>
+                                    <label class="segment-option option-cash">
+                                        <input type="radio" name="paymentMethod" value="cash">
+                                        <span class="segment-btn">
+                                            <i class="ri-cash-line"></i> Tiền mặt
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 5. GHI CHÚ -->
+                        <div class="form-group">
+                            <label for="transactionNote" class="form-label"><i class="ri-file-text-line"></i> Ghi chú (nếu có):</label>
+                            <input type="text" id="transactionNote" class="form-control" placeholder="Ví dụ: Chuyển khoản qua MBBank, hẹn cuối tuần đóng nốt...">
+                        </div>
+
+                        <!-- SUBMIT BUTTON -->
+                        <div class="form-actions">
+                            <button type="submit" id="btnSubmitForm" class="btn btn-primary btn-block btn-lg">
+                                <i class="ri-save-3-line"></i> Lưu Giao Dịch Thu Chi
+                            </button>
+                            <button type="button" id="btnResetForm" class="btn btn-ghost">
+                                <i class="ri-refresh-line"></i> Nhập lại
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+
+            <!-- 2. PRODUCT QUANTITY BREAKDOWN SECTION -->
+            <section class="product-stats-card glass shadow-sm">
+                <div class="product-stats-header">
+                    <h3><i class="ri-book-read-line"></i> Thống Kê Số Lượng Từng Loại Tài Liệu / Sản Phẩm Đã Bán</h3>
+                    <span class="badge badge-info" id="totalItemsSoldBadge">0 bản đã bán</span>
+                </div>
+                <div class="product-stats-grid" id="productStatsGrid">
+                    <!-- Dynamic cards loaded via JS -->
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: TRANSACTION LIST & FILTERS -->
+            <section class="card list-card glass shadow-md">
+                <div class="card-header list-header">
+                    <h2><i class="ri-history-line"></i> Danh Sách Giao Dịch Thu Chi</h2>
+                    <span class="badge badge-info" id="recordCountBadge">0 mục</span>
+                </div>
+
+                <!-- FILTERS TOOLBAR -->
+                <div class="toolbar">
+                    <div class="search-box">
+                        <i class="ri-search-line search-icon"></i>
+                        <input type="text" id="searchInput" class="form-control" placeholder="Tìm theo tên người hoặc sản phẩm...">
+                    </div>
+
+                    <div class="filter-group">
+                        <select id="filterStatus" class="form-control select-control">
+                            <option value="all">Tất cả trạng thái</option>
+                            <option value="paid">✅ Đã đóng tiền</option>
+                            <option value="unpaid">⏳ Chưa đóng tiền</option>
+                        </select>
+
+                        <select id="filterMethod" class="form-control select-control">
+                            <option value="all">Tất cả hình thức</option>
+                            <option value="bank">🏦 Chuyển khoản</option>
+                            <option value="cash">💵 Tiền mặt</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TRANSACTION TABLE -->
+                <div class="table-responsive">
+                    <table class="data-table" id="transactionTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 55px; text-align: center;">STT</th>
+                                <th>Tên Người</th>
+                                <th>Sản Phẩm Tích Chọn</th>
+                                <th>Tổng Tiền</th>
+                                <th>Trạng Thái</th>
+                                <th>Hình Thức</th>
+                                <th>Ngày Tạo</th>
+                                <th>Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionTableBody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- EMPTY STATE -->
+                <div id="emptyState" class="empty-state hidden">
+                    <i class="ri-inbox-archive-line empty-icon"></i>
+                    <h3>Chưa có dữ liệu thu chi</h3>
+                    <p>Hãy nhập tên người và tích chọn sản phẩm ở mẫu bên trái để tạo lượt ghi nhận đầu tiên!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL: MANAGE PRODUCTS CATALOG -->
+    <div class="modal-backdrop hidden" id="modalManageProducts">
+        <div class="modal-content glass shadow-lg">
+            <div class="modal-header">
+                <h3><i class="ri-shopping-bag-3-line"></i> Quản Lý Danh Mục Sản Phẩm & Giá</h3>
+                <button class="btn-close" id="btnCloseProductModal"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="newProductForm" class="inline-form">
+                    <div class="form-group flex-1">
+                        <input type="text" id="newProductName" class="form-control" placeholder="Tên sản phẩm / khoản thu..." required>
+                    </div>
+                    <div class="form-group flex-1">
+                        <input type="number" id="newProductPrice" class="form-control" placeholder="Đơn giá (VNĐ)..." required min="0" step="1000">
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="ri-add-line"></i> Thêm</button>
+                </form>
+                <hr class="divider">
+                <div class="catalog-list" id="catalogListContainer">
+                    <!-- Products catalog list -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: RECEIPT PRINT PREVIEW -->
+    <div class="modal-backdrop hidden" id="modalReceipt">
+        <div class="modal-content receipt-modal glass shadow-lg">
+            <div class="modal-header">
+                <h3><i class="ri-printer-line"></i> Phiếu Thu Tiền</h3>
+                <button class="btn-close" id="btnCloseReceiptModal"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body" id="receiptPrintArea">
+                <!-- Receipt content populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" onclick="window.print()"><i class="ri-printer-line"></i> In Phiếu Thu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
