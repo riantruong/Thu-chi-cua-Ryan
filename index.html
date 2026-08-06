@@ -148,9 +148,15 @@
                                 <label class="form-label required">
                                     <i class="ri-shopping-basket-2-line"></i> Tích chọn các mục / sản phẩm mua:
                                 </label>
-                                <button type="button" id="btnQuickAddProduct" class="btn-link">
-                                    <i class="ri-add-circle-line"></i> Thêm mục mới
-                                </button>
+                                <div class="products-header-actions">
+                                    <label class="select-all-box" title="Tích chọn / Bỏ chọn tất cả các mục">
+                                        <input type="checkbox" id="selectAllProducts" class="custom-checkbox">
+                                        <span>Tích chọn tất cả</span>
+                                    </label>
+                                    <button type="button" id="btnQuickAddProduct" class="btn-link">
+                                        <i class="ri-add-circle-line"></i> Thêm mục mới
+                                    </button>
+                                </div>
                             </div>
                             <div class="product-selection-box" id="productSelectionList">
                                 <!-- JS sẽ load danh sách sản phẩm có tickbox ở đây -->
@@ -161,6 +167,25 @@
                         <div class="total-calculator-banner">
                             <span>Tổng tiền tính tự động:</span>
                             <span id="formCalculatedTotal" class="total-amount-highlight">0 VNĐ</span>
+                        </div>
+
+                        <!-- TRẠNG THÁI NHẬN TÀI LIỆU (SAU MỤC CHỌN TÀI LIỆU) -->
+                        <div class="form-group margin-top-md">
+                            <label class="form-label required"><i class="ri-box-3-line"></i> Trạng thái nhận tài liệu:</label>
+                            <div class="segmented-control">
+                                <label class="segment-option option-doc-received">
+                                    <input type="radio" name="docStatus" value="received" checked>
+                                    <span class="segment-btn">
+                                        <i class="ri-checkbox-circle-line"></i> Đã nhận tài liệu
+                                    </span>
+                                </label>
+                                <label class="segment-option option-doc-pending">
+                                    <input type="radio" name="docStatus" value="not_received">
+                                    <span class="segment-btn">
+                                        <i class="ri-time-line"></i> Chưa nhận tài liệu
+                                    </span>
+                                </label>
+                            </div>
                         </div>
 
                         <div class="form-row">
@@ -248,8 +273,14 @@
                     </div>
 
                     <div class="filter-group">
+                        <select id="filterDocStatus" class="form-control select-control">
+                            <option value="all">Tất cả nhận tài liệu</option>
+                            <option value="received">📦 Đã nhận tài liệu</option>
+                            <option value="not_received">⏳ Chưa nhận tài liệu</option>
+                        </select>
+
                         <select id="filterStatus" class="form-control select-control">
-                            <option value="all">Tất cả trạng thái</option>
+                            <option value="all">Tất cả trạng thái tiền</option>
                             <option value="paid">✅ Đã đóng tiền</option>
                             <option value="unpaid">⏳ Chưa đóng tiền</option>
                         </select>
@@ -271,7 +302,8 @@
                                 <th>Tên Người</th>
                                 <th>Sản Phẩm Tích Chọn</th>
                                 <th>Tổng Tiền</th>
-                                <th>Trạng Thái</th>
+                                <th>Nhận Tài Liệu</th>
+                                <th>Trạng Thái Đóng Tiền</th>
                                 <th>Hình Thức</th>
                                 <th>Ngày Tạo</th>
                                 <th>Thao Tác</th>
