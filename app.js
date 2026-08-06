@@ -48,6 +48,7 @@ const SAMPLE_TRANSACTIONS = [
             { id: 'p2', name: 'Tài liệu Cấu trúc dữ liệu', price: 11000, qty: 1 }
         ],
         totalAmount: 20000,
+        docStatus: 'received',
         status: 'paid',
         method: 'bank',
         note: 'Đã chuyển khoản Vietcombank',
@@ -60,6 +61,7 @@ const SAMPLE_TRANSACTIONS = [
             { id: 'p4', name: 'Sách Giáo trình "Kinh tế Chính trị Mác-Lênin"', price: 45000, qty: 1 }
         ],
         totalAmount: 45000,
+        docStatus: 'not_received',
         status: 'unpaid',
         method: 'bank',
         note: 'Hẹn chuyển khoản vào tối nay',
@@ -73,6 +75,7 @@ const SAMPLE_TRANSACTIONS = [
             { id: 'p4', name: 'Sách Giáo trình "Kinh tế Chính trị Mác-Lênin"', price: 45000, qty: 1 }
         ],
         totalAmount: 70000,
+        docStatus: 'received',
         status: 'paid',
         method: 'cash',
         note: 'Đưa tiền mặt tại lớp',
@@ -93,6 +96,7 @@ const personSuggestions = document.getElementById('personSuggestions');
 const step2Container = document.getElementById('step2Container');
 const personInputHint = document.getElementById('personInputHint');
 const productSelectionList = document.getElementById('productSelectionList');
+const selectAllProducts = document.getElementById('selectAllProducts');
 const formCalculatedTotal = document.getElementById('formCalculatedTotal');
 const editTransactionIdInput = document.getElementById('editTransactionId');
 const formTitle = document.getElementById('formTitle');
@@ -117,6 +121,7 @@ const transactionTableBody = document.getElementById('transactionTableBody');
 const recordCountBadge = document.getElementById('recordCountBadge');
 const emptyState = document.getElementById('emptyState');
 const searchInput = document.getElementById('searchInput');
+const filterDocStatus = document.getElementById('filterDocStatus');
 const filterStatus = document.getElementById('filterStatus');
 const filterMethod = document.getElementById('filterMethod');
 
@@ -294,7 +299,15 @@ function renderProductSelectionForm() {
                 <p style="font-size: 13px;">Chưa có sản phẩm nào. Hãy bấm "+ Thêm mục mới" để tạo!</p>
             </div>
         `;
+        if (selectAllProducts) selectAllProducts.checked = false;
         return;
+    }
+
+    // Sync select-all checkbox state
+    if (selectAllProducts) {
+        const totalProds = productsCatalog.length;
+        const selectedCount = productsCatalog.filter(p => selectedFormProducts[p.id] > 0).length;
+        selectAllProducts.checked = totalProds > 0 && selectedCount === totalProds;
     }
 
     productsCatalog.forEach(prod => {
@@ -379,6 +392,7 @@ function calculateFormTotal() {
 // ==========================================
 function renderTransactionsTable() {
     const searchTerm = searchInput.value.trim().toLowerCase();
+    const docStatusVal = filterDocStatus ? filterDocStatus.value : 'all';
     const statusVal = filterStatus.value;
     const methodVal = filterMethod.value;
 
@@ -387,10 +401,11 @@ function renderTransactionsTable() {
         const matchItem = tx.items.some(i => i.name.toLowerCase().includes(searchTerm));
         const matchSearch = matchName || matchItem;
 
+        const matchDocStatus = (docStatusVal === 'all') || ((tx.docStatus || 'received') === docStatusVal);
         const matchStatus = (statusVal === 'all') || (tx.status === statusVal);
         const matchMethod = (methodVal === 'all') || (tx.method === methodVal);
 
-        return matchSearch && matchStatus && matchMethod;
+        return matchSearch && matchDocStatus && matchStatus && matchMethod;
     });
 
     transactionTableBody.innerHTML = '';
@@ -408,6 +423,12 @@ function renderTransactionsTable() {
             const itemsHtml = tx.items.map(item => 
                 `<span class="product-tag">${item.name} <strong>x${item.qty}</strong></span>`
             ).join('');
+
+            // Document Receipt Badge
+            const currentDocStatus = tx.docStatus || 'received';
+            const docStatusBadge = currentDocStatus === 'received'
+                ? `<span class="badge badge-received" title="Bấm để chuyển sang Chưa nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-checkbox-circle-line"></i> Đã nhận TL</span>`
+                : `<span class="badge badge-warning" title="Bấm để chuyển sang Đã nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-time-line"></i> Chưa nhận TL (Tích đổi)</span>`;
 
             // Status Badge
             const statusBadge = tx.status === 'paid'
@@ -431,6 +452,7 @@ function renderTransactionsTable() {
                     <div class="products-badge-list">${itemsHtml}</div>
                 </td>
                 <td class="amount-cell">${formatCurrency(tx.totalAmount)}</td>
+                <td>${docStatusBadge}</td>
                 <td>${statusBadge}</td>
                 <td>${methodBadge}</td>
                 <td style="font-size:12px; color:var(--text-muted);">${formatDate(tx.createdAt)}</td>
@@ -513,12 +535,15 @@ function updateProductStatsBreakdown() {
             totalQty: 0,
             paidQty: 0,
             unpaidQty: 0,
+            receivedQty: 0,
+            notReceivedQty: 0,
             revenue: 0
         };
     });
 
     // Calculate from transactions
     transactions.forEach(tx => {
+        const isDocReceived = (tx.docStatus || 'received') === 'received';
         tx.items.forEach(item => {
             if (!statsMap[item.id]) {
                 statsMap[item.id] = {
@@ -527,6 +552,8 @@ function updateProductStatsBreakdown() {
                     totalQty: 0,
                     paidQty: 0,
                     unpaidQty: 0,
+                    receivedQty: 0,
+                    notReceivedQty: 0,
                     revenue: 0
                 };
             }
@@ -539,6 +566,12 @@ function updateProductStatsBreakdown() {
                 stat.paidQty += item.qty;
             } else {
                 stat.unpaidQty += item.qty;
+            }
+
+            if (isDocReceived) {
+                stat.receivedQty += item.qty;
+            } else {
+                stat.notReceivedQty += item.qty;
             }
         });
     });
@@ -557,7 +590,8 @@ function updateProductStatsBreakdown() {
                 <div class="prod-stat-title" title="${stat.name}">${stat.name}</div>
                 <div class="prod-stat-sub">
                     <span class="text-success">✅ Đã thu: ${stat.paidQty}</span> | 
-                    <span class="text-danger">⏳ Nợ: ${stat.unpaidQty}</span>
+                    <span class="text-danger">⏳ Nợ: ${stat.unpaidQty}</span> |
+                    <span style="color: var(--info);">📦 Đã nhận: ${stat.receivedQty}</span>
                 </div>
             </div>
             <div class="prod-stat-right">
@@ -602,6 +636,21 @@ function setupEventListeners() {
     personNameInput.addEventListener('input', toggleStep2Accordion);
     personNameInput.addEventListener('focus', toggleStep2Accordion);
 
+    // Select All Checkbox Listener
+    if (selectAllProducts) {
+        selectAllProducts.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                productsCatalog.forEach(prod => {
+                    selectedFormProducts[prod.id] = 1;
+                });
+            } else {
+                selectedFormProducts = {};
+            }
+            renderProductSelectionForm();
+            calculateFormTotal();
+        });
+    }
+
     // Form Submit
     transactionForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -616,6 +665,7 @@ function setupEventListeners() {
 
     // Search and Filter Events
     searchInput.addEventListener('input', renderTransactionsTable);
+    if (filterDocStatus) filterDocStatus.addEventListener('change', renderTransactionsTable);
     filterStatus.addEventListener('change', renderTransactionsTable);
     filterMethod.addEventListener('change', renderTransactionsTable);
 
@@ -691,6 +741,8 @@ function saveTransactionFromForm() {
     });
 
     const totalAmount = calculateFormTotal();
+    const docStatusRadio = document.querySelector('input[name="docStatus"]:checked');
+    const docStatus = docStatusRadio ? docStatusRadio.value : 'received';
     const status = document.querySelector('input[name="paymentStatus"]:checked').value;
     const method = document.querySelector('input[name="paymentMethod"]:checked').value;
     const note = document.getElementById('transactionNote').value.trim();
@@ -706,6 +758,7 @@ function saveTransactionFromForm() {
                 personName,
                 items,
                 totalAmount,
+                docStatus,
                 status,
                 method,
                 note
@@ -719,6 +772,7 @@ function saveTransactionFromForm() {
             personName,
             items,
             totalAmount,
+            docStatus,
             status,
             method,
             note,
@@ -742,6 +796,10 @@ function resetForm() {
     formTitle.textContent = 'Nhập Thu Chi Theo Người';
     btnSubmitForm.innerHTML = `<i class="ri-save-3-line"></i> Lưu Giao Dịch Thu Chi`;
     btnCancelEdit.classList.add('hidden');
+
+    const defaultDocRadio = document.querySelector('input[name="docStatus"][value="received"]');
+    if (defaultDocRadio) defaultDocRadio.checked = true;
+
     renderProductSelectionForm();
     toggleStep2Accordion();
 }
@@ -753,7 +811,18 @@ window.togglePaymentStatus = function(id) {
         saveTransactions();
         renderTransactionsTable();
         updateDashboardStats();
-        showToast(`Đã đổi trạng thái cho ${tx.personName} sang: ${tx.status === 'paid' ? 'Đã đóng tiền' : 'Chưa đóng tiền'}`, 'info');
+        showToast(`Đã đổi trạng thái tiền cho ${tx.personName} sang: ${tx.status === 'paid' ? 'Đã đóng tiền' : 'Chưa đóng tiền'}`, 'info');
+    }
+};
+
+window.toggleDocStatus = function(id) {
+    const tx = transactions.find(t => t.id === id);
+    if (tx) {
+        tx.docStatus = (tx.docStatus || 'received') === 'received' ? 'not_received' : 'received';
+        saveTransactions();
+        renderTransactionsTable();
+        updateDashboardStats();
+        showToast(`Đã đổi trạng thái nhận tài liệu cho ${tx.personName} sang: ${tx.docStatus === 'received' ? 'Đã nhận tài liệu' : 'Chưa nhận tài liệu'}`, 'info');
     }
 };
 
@@ -766,6 +835,9 @@ window.startEditTransaction = function(id) {
     document.getElementById('transactionNote').value = tx.note || '';
 
     // Set radios
+    const docRadio = document.querySelector(`input[name="docStatus"][value="${tx.docStatus || 'received'}"]`);
+    if (docRadio) docRadio.checked = true;
+
     const statusRadio = document.querySelector(`input[name="paymentStatus"][value="${tx.status}"]`);
     if (statusRadio) statusRadio.checked = true;
 
@@ -882,6 +954,8 @@ window.printReceipt = function(id) {
         </tr>
     `).join('');
 
+    const isDocReceived = (tx.docStatus || 'received') === 'received';
+
     receiptPrintArea.innerHTML = `
         <div style="font-family:sans-serif; color:#1e293b; line-height:1.6;">
             <div style="text-align:center; margin-bottom:20px; border-bottom:2px dashed #059669; padding-bottom:12px;">
@@ -890,7 +964,8 @@ window.printReceipt = function(id) {
             </div>
             <div style="margin-bottom:16px;">
                 <p><strong>Người nộp / Mua hàng:</strong> ${tx.personName}</p>
-                <p><strong>Trạng thái:</strong> ${tx.status === 'paid' ? '✅ Đã đóng tiền' : '⏳ Chưa đóng tiền'}</p>
+                <p><strong>Trạng thái nhận tài liệu:</strong> ${isDocReceived ? '📦 Đã nhận tài liệu' : '⏳ Chưa nhận tài liệu'}</p>
+                <p><strong>Trạng thái đóng tiền:</strong> ${tx.status === 'paid' ? '✅ Đã đóng tiền' : '⏳ Chưa đóng tiền'}</p>
                 <p><strong>Hình thức thanh toán:</strong> ${tx.method === 'bank' ? '🏦 Chuyển khoản' : '💵 Tiền mặt'}</p>
                 ${tx.note ? `<p><strong>Ghi chú:</strong> ${tx.note}</p>` : ''}
             </div>
@@ -936,15 +1011,16 @@ function exportToCSV() {
     }
 
     let csv = '\uFEFF'; // BOM UTF-8 for Excel Vietnamese text
-    csv += 'Mã Giao Dịch,Tên Người,Sản Phẩm Mua,Tổng Tiền (VNĐ),Trạng Thái,Hình Thức,Ghi Chú,Ngày Tạo\n';
+    csv += 'Mã Giao Dịch,Tên Người,Sản Phẩm Mua,Tổng Tiền (VNĐ),Nhận Tài Liệu,Trạng Thái Đóng Tiền,Hình Thức,Ghi Chú,Ngày Tạo\n';
 
     transactions.forEach(tx => {
         const prodList = tx.items.map(i => `${i.name} (x${i.qty})`).join('; ');
+        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận' : 'Chưa nhận';
         const statusTxt = tx.status === 'paid' ? 'Đã đóng' : 'Chưa đóng';
         const methodTxt = tx.method === 'bank' ? 'Chuyển khoản' : 'Tiền mặt';
         const cleanNote = (tx.note || '').replace(/"/g, '""');
 
-        csv += `"${tx.id}","${tx.personName}","${prodList}","${tx.totalAmount}","${statusTxt}","${methodTxt}","${cleanNote}","${formatDate(tx.createdAt)}"\n`;
+        csv += `"${tx.id}","${tx.personName}","${prodList}","${tx.totalAmount}","${docTxt}","${statusTxt}","${methodTxt}","${cleanNote}","${formatDate(tx.createdAt)}"\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
