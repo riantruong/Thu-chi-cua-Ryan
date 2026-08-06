@@ -331,11 +331,25 @@ function renderProductSelectionForm() {
             </div>
         `;
 
-        // Click on checkbox
+        // Click anywhere on row to toggle selection (except when clicking qty controls)
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.qty-control')) return;
+            if (e.target.classList.contains('custom-checkbox')) return; // handled by change event
+
+            if (selectedFormProducts[prod.id] > 0) {
+                delete selectedFormProducts[prod.id];
+            } else {
+                selectedFormProducts[prod.id] = 1;
+            }
+            renderProductSelectionForm();
+            calculateFormTotal();
+        });
+
+        // Click directly on checkbox
         const checkbox = row.querySelector('.custom-checkbox');
         checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-                selectedFormProducts[prod.id] = 1;
+                selectedFormProducts[prod.id] = selectedFormProducts[prod.id] || 1;
             } else {
                 delete selectedFormProducts[prod.id];
             }
