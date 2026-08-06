@@ -685,6 +685,34 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.products-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.select-all-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--primary-light);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    user-select: none;
+}
+
+.select-all-box:hover {
+    background: var(--primary);
+    color: #ffffff;
 }
 
 .product-selection-box {
@@ -794,6 +822,10 @@ body {
     color: var(--primary);
 }
 
+.margin-top-md {
+    margin-top: 16px;
+}
+
 /* --- SEGMENTED CONTROLS --- */
 .segmented-control {
     display: flex;
@@ -831,6 +863,16 @@ body {
     background: var(--bg-card-solid);
     color: var(--text-main);
     box-shadow: var(--shadow-sm);
+}
+
+.option-doc-received input[type="radio"]:checked + .segment-btn {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.option-doc-pending input[type="radio"]:checked + .segment-btn {
+    background: var(--warning);
+    color: #ffffff;
 }
 
 .option-paid input[type="radio"]:checked + .segment-btn {
@@ -976,6 +1018,10 @@ body {
 }
 
 .badge-success { background: var(--success-bg); color: var(--success); }
+.badge-received { background: var(--primary-light); color: var(--primary); cursor: pointer; }
+.badge-received:hover { filter: brightness(0.95); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); cursor: pointer; }
+.badge-warning:hover { filter: brightness(0.95); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); cursor: pointer; }
 .badge-danger:hover { filter: brightness(0.95); }
 .badge-bank { background: rgba(37, 99, 235, 0.1); color: var(--bank-color); }
