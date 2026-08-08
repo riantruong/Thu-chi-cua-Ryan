@@ -115,7 +115,7 @@
             <!-- 1. ENTRY FORM CARD (BƯỚC 1 NHẬP TÊN + BƯỚC 2 CHỌN SẢN PHẨM) -->
             <section class="card form-card glass shadow-md">
                 <div class="card-header">
-                    <h2><i class="ri-user-add-line"></i> <span id="formTitle">Nhập Dữ Liệu</span></h2>
+                    <h2><span id="formTitle">Nhập Dữ Liệu</span></h2>
                     <button type="button" id="btnCancelEdit" class="btn btn-sm btn-ghost hidden">
                         <i class="ri-close-line"></i> Hủy sửa
                     </button>
@@ -128,14 +128,13 @@
                     <div class="form-group step-card-hero">
                         <label for="personName" class="form-label required form-label-lg">
                             <span class="step-number">1</span>
-                            <i class="ri-user-3-fill"></i> Tên người mua / đóng tiền:
+                            Tên người mua / đóng tiền:
                         </label>
-                        <div class="input-with-icon">
+                        <div>
                             <input type="text" id="personName" class="form-control form-control-hero" placeholder="👉 Nhập tên người tại đây (Ví dụ: Nguyễn Văn An)..." required list="personSuggestions">
-                            <i class="ri-user-heart-line input-icon hero-icon"></i>
                         </div>
                         <div id="personInputHint" class="person-hint">
-                            <i class="ri-corner-down-right-line"></i> Nhập tên người ở trên để mở danh sách sản phẩm tích chọn
+                            Nhập tên người ở trên để mở danh sách sản phẩm tích chọn
                         </div>
                         <datalist id="personSuggestions"></datalist>
                     </div>
@@ -151,7 +150,7 @@
                         <div class="form-group">
                             <div class="products-header">
                                 <label class="form-label required">
-                                    <i class="ri-shopping-basket-2-line"></i> Tích chọn các mục / sản phẩm mua:
+                                    Tích chọn các mục / sản phẩm mua:
                                 </label>
                                 <div class="products-header-actions">
                                     <label class="select-all-box" title="Tích chọn / Bỏ chọn tất cả các mục">
@@ -164,7 +163,7 @@
                                 </div>
                             </div>
                             <div class="doc-pickup-quick-toolbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; flex-wrap:wrap; gap:6px;">
-                                <span style="color:var(--text-muted); font-weight:600;"><i class="ri-book-mark-line"></i> Trạng thái lấy từng cuốn:</span>
+                                <span style="color:var(--text-muted); font-weight:600;">Trạng thái lấy từng cuốn:</span>
                                 <div style="display:flex; gap:6px;">
                                     <button type="button" class="btn btn-xs btn-outline-success" id="btnQuickReceiveAllItems">📦 Đã lấy tất cả cuốn chọn</button>
                                     <button type="button" class="btn btn-xs btn-outline-warning" id="btnQuickPendingAllItems">⏳ Chưa lấy cuốn nào</button>
@@ -181,36 +180,16 @@
                             <span id="formCalculatedTotal" class="total-amount-highlight">0 VNĐ</span>
                         </div>
 
-                        <!-- TRẠNG THÁI NHẬN TÀI LIỆU (SAU MỤC CHỌN TÀI LIỆU) -->
-                        <div class="form-group margin-top-md">
-                            <label class="form-label required"><i class="ri-box-3-line"></i> Trạng thái nhận tài liệu:</label>
-                            <div class="segmented-control">
-                                <label class="segment-option option-doc-received">
-                                    <input type="radio" name="docStatus" value="received" checked>
-                                    <span class="segment-btn">
-                                        <i class="ri-checkbox-circle-line"></i> Đã nhận tài liệu
-                                    </span>
-                                </label>
-                                <label class="segment-option option-doc-pending">
-                                    <input type="radio" name="docStatus" value="not_received">
-                                    <span class="segment-btn">
-                                        <i class="ri-time-line"></i> Chưa nhận tài liệu
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-
                         <!-- SỐ TIỀN ĐÃ CHUYỂN / ĐÃ ĐÓNG THỰC TẾ -->
                         <div class="form-group margin-top-md glass-sm padding-sm">
                             <div class="paid-amount-header">
                                 <label for="paidAmountInput" class="form-label required">
-                                    <i class="ri-money-dollar-circle-fill text-success"></i> Số tiền đã chuyển / đã đóng (VNĐ):
+                                    Số tiền đã chuyển / đã đóng (VNĐ):
                                 </label>
                                 <span class="badge badge-warning" id="formRemainingDebtBadge">Còn nợ: 0 VNĐ</span>
                             </div>
-                            <div class="input-with-icon">
+                            <div>
                                 <input type="number" id="paidAmountInput" class="form-control form-control-lg" placeholder="👉 Nhập số tiền thực tế người đó đã chuyển..." min="0" step="1000">
-                                <i class="ri-hand-coin-line input-icon" style="color:var(--primary)"></i>
                             </div>
                             <div class="quick-paid-btns">
                                 <button type="button" class="btn btn-xs btn-outline-success" id="btnQuickPaidFull">💯 Chuyển đủ 100%</button>
@@ -222,7 +201,7 @@
                         <div class="form-row">
                             <!-- 3. ĐÃ ĐÓNG HAY CHƯA ĐÓNG -->
                             <div class="form-group col-6">
-                                <label class="form-label required"><i class="ri-checkbox-circle-line"></i> Trạng thái đóng tiền:</label>
+                                <label class="form-label required">Trạng thái đóng tiền:</label>
                                 <div class="segmented-control">
                                     <label class="segment-option option-paid">
                                         <input type="radio" name="paymentStatus" value="paid" checked>
@@ -241,7 +220,7 @@
 
                             <!-- 4. CHUYỂN KHOẢN HAY TIỀN MẶT -->
                             <div class="form-group col-6">
-                                <label class="form-label required"><i class="ri-wallet-line"></i> Hình thức thanh toán:</label>
+                                <label class="form-label required">Hình thức thanh toán:</label>
                                 <div class="segmented-control">
                                     <label class="segment-option option-bank">
                                         <input type="radio" name="paymentMethod" value="bank" checked>
@@ -261,7 +240,7 @@
 
                         <!-- 5. GHI CHÚ -->
                         <div class="form-group">
-                            <label for="transactionNote" class="form-label"><i class="ri-file-text-line"></i> Ghi chú (nếu có):</label>
+                            <label for="transactionNote" class="form-label">Ghi chú (nếu có):</label>
                             <input type="text" id="transactionNote" class="form-control" placeholder="Ví dụ: Chuyển khoản qua MBBank, hẹn cuối tuần đóng nốt...">
                         </div>
 
@@ -281,7 +260,7 @@
             <!-- 2. PRODUCT QUANTITY BREAKDOWN SECTION -->
             <section class="product-stats-card glass shadow-sm">
                 <div class="product-stats-header">
-                    <h3><i class="ri-book-read-line"></i> Thống Kê Số Lượng Tài Liệu</h3>
+                    <h3>Thống Kê Số Lượng Tài Liệu</h3>
                     <span class="badge badge-info" id="totalItemsSoldBadge">0 bản đã bán</span>
                 </div>
                 <div class="product-stats-grid" id="productStatsGrid">
@@ -292,7 +271,7 @@
             <!-- RIGHT PANEL: TRANSACTION LIST & FILTERS -->
             <section class="card list-card glass shadow-md">
                 <div class="card-header list-header">
-                    <h2><i class="ri-history-line"></i> Danh Sách Giao Dịch Thu Chi</h2>
+                    <h2>Danh Sách Giao Dịch Thu Chi</h2>
                     <span class="badge badge-info" id="recordCountBadge">0 mục</span>
                 </div>
 
