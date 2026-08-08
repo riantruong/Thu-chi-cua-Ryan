@@ -1173,7 +1173,7 @@ window.printReceipt = function(id) {
 };
 
 // ==========================================
-// 11. EXPORT EXCEL (FULL COLLECTED DATA)
+// 11. EXPORT EXCEL (MATCH EXACT TABLE LAYOUT)
 // ==========================================
 function exportToExcel() {
     if (transactions.length === 0) {
@@ -1181,37 +1181,36 @@ function exportToExcel() {
         return;
     }
 
-    // Headers with ALL collected fields, each in 1 dedicated column
+    // Header matching the UI table layout exactly:
     const exportRows = [
         [
             "STT",
-            "Họ và Tên",
-            "Sản phẩm / Tài liệu mua",
-            "Số tiền thanh toán (VNĐ)",
-            "Trạng thái đóng tiền",
-            "Hình thức thanh toán",
-            "Trạng thái nhận tài liệu",
-            "Ghi chú",
-            "Ngày tạo"
+            "TÊN NGƯỜI",
+            "SẢN PHẨM TÍCH CHỌN",
+            "TỔNG TIỀN",
+            "NHẬN TÀI LIỆU",
+            "TRẠNG THÁI ĐÓNG TIỀN",
+            "HÌNH THỨC",
+            "NGÀY TẠO"
         ]
     ];
 
     transactions.forEach((tx, idx) => {
-        const prodList = tx.items.map(i => i.qty > 1 ? `${i.name} (x${i.qty})` : i.name).join('; ');
+        const prodList = tx.items.map(i => `${i.name} x${i.qty}`).join('\n');
+        const totalStr = formatCurrency(tx.totalAmount);
+        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận TL' : 'Chưa nhận';
         const statusTxt = tx.status === 'paid' ? 'Đã đóng' : 'Chưa đóng';
         const methodTxt = tx.method === 'bank' ? 'Chuyển khoản' : 'Tiền mặt';
-        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận' : 'Chưa nhận';
-        const formattedDate = formatDate ? formatDate(tx.createdAt) : tx.createdAt;
+        const formattedDate = formatDate(tx.createdAt);
 
         exportRows.push([
             idx + 1,
             tx.personName,
             prodList,
-            tx.totalAmount, // Numeric value for easy calculation in Excel
+            totalStr,
+            docTxt,
             statusTxt,
             methodTxt,
-            docTxt,
-            tx.note || '',
             formattedDate
         ]);
     });
@@ -1219,44 +1218,42 @@ function exportToExcel() {
     if (typeof XLSX !== 'undefined') {
         const ws = XLSX.utils.aoa_to_sheet(exportRows);
         
-        // Auto-set column widths for easy reading & comparison
+        // Auto-set column widths for easy reading
         ws['!cols'] = [
             { wch: 6 },  // STT
-            { wch: 24 }, // Họ và Tên
-            { wch: 50 }, // Sản phẩm mua
-            { wch: 22 }, // Số tiền thanh toán
-            { wch: 20 }, // Trạng thái đóng tiền
-            { wch: 22 }, // Hình thức thanh toán
-            { wch: 22 }, // Trạng thái nhận tài liệu
-            { wch: 30 }, // Ghi chú
-            { wch: 20 }  // Ngày tạo
+            { wch: 24 }, // TÊN NGƯỜI
+            { wch: 48 }, // SẢN PHẨM TÍCH CHỌN
+            { wch: 16 }, // TỔNG TIỀN
+            { wch: 18 }, // NHẬN TÀI LIỆU
+            { wch: 22 }, // TRẠNG THÁI ĐÓNG TIỀN
+            { wch: 18 }, // HÌNH THỨC
+            { wch: 20 }  // NGÀY TẠO
         ];
 
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Thu_Thap");
+        XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Thu_Chi");
         
-        const fileName = `Danh_Sach_Thu_Chi_Full_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const fileName = `Bao_Cao_Thu_Chi_DH25TIN03_${new Date().toISOString().slice(0, 10)}.xlsx`;
         XLSX.writeFile(wb, fileName);
-        showToast('Đã xuất tệp Excel đầy đủ dữ liệu thành công!', 'success');
+        showToast('Đã xuất tệp Excel theo đúng bố cục bảng!', 'success');
     } else {
         // Fallback UTF-8 BOM CSV
         let csv = '\uFEFF';
-        csv += 'STT,Họ và Tên,Sản phẩm / Tài liệu mua,Số tiền thanh toán (VNĐ),Trạng thái đóng tiền,Hình thức thanh toán,Trạng thái nhận tài liệu,Ghi chú,Ngày tạo\n';
+        csv += 'STT,TÊN NGƯỜI,SẢN PHẨM TÍCH CHỌN,TỔNG TIỀN,NHẬN TÀI LIỆU,TRẠNG THÁI ĐÓNG TIỀN,HÌNH THỨC,NGÀY TẠO\n';
         exportRows.slice(1).forEach(row => {
-            const cleanProd = (row[2] || '').replace(/"/g, '""');
-            const cleanNote = (row[7] || '').replace(/"/g, '""');
-            csv += `"${row[0]}","${row[1]}","${cleanProd}","${row[3]}","${row[4]}","${row[5]}","${row[6]}","${cleanNote}","${row[8]}"\n`;
+            const cleanProd = (row[2] || '').replace(/"/g, '""').replace(/\n/g, '; ');
+            csv += `"${row[0]}","${row[1]}","${cleanProd}","${row[3]}","${row[4]}","${row[5]}","${row[6]}","${row[7]}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `Danh_Sach_Thu_Chi_Full_${new Date().toISOString().slice(0, 10)}.csv`);
+        link.setAttribute('download', `Bao_Cao_Thu_Chi_DH25TIN03_${new Date().toISOString().slice(0, 10)}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('Đã xuất tệp CSV đầy đủ dữ liệu thành công!', 'success');
+        showToast('Đã xuất tệp CSV thành công!', 'success');
     }
 }
 
