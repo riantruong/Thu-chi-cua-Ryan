@@ -216,7 +216,10 @@ function loadProducts() {
     }
 }
 
+let lastLocalSaveTime = 0;
+
 function saveProducts() {
+    lastLocalSaveTime = Date.now();
     localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
     scheduleCloudSave();
 }
@@ -256,6 +259,7 @@ function loadTransactions() {
 }
 
 function saveTransactions() {
+    lastLocalSaveTime = Date.now();
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
     if (transactions.length >= 3) {
         localStorage.setItem('smart_tracker_backup_tx_48', JSON.stringify(transactions));
@@ -269,6 +273,11 @@ function saveTransactions() {
 function startCloudSync() {
     onSnapshot(sharedDataRef, (snapshot) => {
         cloudReady = true;
+
+        // Prevent overwriting local uncommitted modifications or immediate post-save snapshots
+        if (snapshot.metadata.hasPendingWrites || (Date.now() - lastLocalSaveTime < 2500)) {
+            return;
+        }
 
         if (!snapshot.exists()) {
             scheduleCloudSave();
@@ -310,7 +319,7 @@ function startCloudSync() {
         renderTransactionsTable();
         updateDashboardStats();
         updatePersonSuggestions();
-        if (!modalManageProducts.classList.contains('hidden')) renderCatalogModalList();
+        if (modalManageProducts && !modalManageProducts.classList.contains('hidden')) renderCatalogModalList();
     }, (error) => {
         console.error('Firestore sync error:', error);
     });
@@ -329,7 +338,7 @@ function scheduleCloudSave() {
             }, { merge: true });
         } catch (error) {
             console.error('Firestore save error:', error);
-            showToast('LÆ°u dá»¯ liá»‡u Ä‘á»“ng bá»™ tháº¥t báº¡i.', 'danger');
+            showToast('Lưu dữ liệu đồng bộ thất bại.', 'danger');
         }
     }, 350);
 }
@@ -1168,6 +1177,9 @@ function saveTransactionFromForm() {
         };
     });
 
+    // Calculate totalAmount for form submission
+    const totalAmount = items.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
     // Auto determine overall order docStatus
     const recCount = items.filter(i => i.received).length;
     let docStatus = 'received';
@@ -1204,7 +1216,8 @@ function saveTransactionFromForm() {
                 docStatus,
                 status: computedStatus,
                 method,
-                note
+                note,
+                updatedAt: new Date().toISOString()
             };
             showToast(`Đã cập nhật giao dịch của ${personName}!`, 'success');
         }
@@ -1219,7 +1232,8 @@ function saveTransactionFromForm() {
             status: computedStatus,
             method,
             note,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
         transactions.unshift(newTx);
         showToast(`Đã lưu giao dịch mới cho ${personName}!`, 'success');
@@ -1328,7 +1342,10 @@ window.startEditTransaction = function(id) {
 
     selectedFormProducts = {};
     tx.items.forEach(item => {
-        selectedFormProducts[item.id] = item.qty;
+        selectedFormProducts[item.id] = {
+            qty: item.qty || 1,
+            received: item.received !== false
+        };
     });
 
     const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
@@ -1372,40 +1389,6 @@ window.toggleDocStatus = function(id) {
         updateDashboardStats();
         showToast(`Đã đổi trạng thái nhận tài liệu cho ${tx.personName} sang: ${tx.docStatus === 'received' ? 'Đã nhận tài liệu' : 'Chưa nhận tài liệu'}`, 'info');
     }
-};
-
-window.startEditTransaction = function(id) {
-    const tx = transactions.find(t => t.id === id);
-    if (!tx) return;
-
-    editTransactionIdInput.value = tx.id;
-    personNameInput.value = tx.personName;
-    document.getElementById('transactionNote').value = tx.note || '';
-
-    // Set radios
-    const docRadio = document.querySelector(`input[name="docStatus"][value="${tx.docStatus || 'received'}"]`);
-    if (docRadio) docRadio.checked = true;
-
-    const statusRadio = document.querySelector(`input[name="paymentStatus"][value="${tx.status}"]`);
-    if (statusRadio) statusRadio.checked = true;
-
-    const methodRadio = document.querySelector(`input[name="paymentMethod"][value="${tx.method}"]`);
-    if (methodRadio) methodRadio.checked = true;
-
-    // Load products selection
-    selectedFormProducts = {};
-    tx.items.forEach(item => {
-        selectedFormProducts[item.id] = item.qty;
-    });
-
-    renderProductSelectionForm();
-    toggleStep2Accordion();
-
-    formTitle.textContent = `Chỉnh Sửa Giao Dịch: ${tx.personName}`;
-    btnSubmitForm.innerHTML = `<i class="ri-check-double-line"></i> Cập Nhật Giao Dịch`;
-    btnCancelEdit.classList.remove('hidden');
-
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.deleteTransaction = function(id) {
