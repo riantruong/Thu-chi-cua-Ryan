@@ -163,6 +163,13 @@
                                     </button>
                                 </div>
                             </div>
+                            <div class="doc-pickup-quick-toolbar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:12px; flex-wrap:wrap; gap:6px;">
+                                <span style="color:var(--text-muted); font-weight:600;"><i class="ri-book-mark-line"></i> Trạng thái lấy từng cuốn:</span>
+                                <div style="display:flex; gap:6px;">
+                                    <button type="button" class="btn btn-xs btn-outline-success" id="btnQuickReceiveAllItems">📦 Đã lấy tất cả cuốn chọn</button>
+                                    <button type="button" class="btn btn-xs btn-outline-warning" id="btnQuickPendingAllItems">⏳ Chưa lấy cuốn nào</button>
+                                </div>
+                            </div>
                             <div class="product-selection-box" id="productSelectionList">
                                 <!-- JS sẽ load danh sách sản phẩm có tickbox ở đây -->
                             </div>
@@ -492,6 +499,6 @@
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script type="module" src="app.js?v=5"></script>
+    <script type="module" src="app.js?v=6"></script>
 </body>
 </html>
