@@ -141,6 +141,37 @@ const btnCloseReceiptModal = document.getElementById('btnCloseReceiptModal');
 const receiptPrintArea = document.getElementById('receiptPrintArea');
 const toastContainer = document.getElementById('toastContainer');
 
+// Excel Import Modal Elements
+const btnImportExcel = document.getElementById('btnImportExcel');
+const modalImportExcel = document.getElementById('modalImportExcel');
+const btnCloseImportModal = document.getElementById('btnCloseImportModal');
+const btnCancelImportModal = document.getElementById('btnCancelImportModal');
+const excelDropZone = document.getElementById('excelDropZone');
+const excelFileInput = document.getElementById('excelFileInput');
+const browseExcelBtn = document.getElementById('browseExcelBtn');
+const btnDownloadTemplate = document.getElementById('btnDownloadTemplate');
+const excelPreviewContainer = document.getElementById('excelPreviewContainer');
+const importFileName = document.getElementById('importFileName');
+const importTotalCount = document.getElementById('importTotalCount');
+const importDuplicateCount = document.getElementById('importDuplicateCount');
+const importUniqueCount = document.getElementById('importUniqueCount');
+const tabFilterAll = document.getElementById('tabFilterAll');
+const tabFilterDup = document.getElementById('tabFilterDup');
+const tabFilterUnique = document.getElementById('tabFilterUnique');
+const countTabAll = document.getElementById('countTabAll');
+const countTabDup = document.getElementById('countTabDup');
+const countTabUnique = document.getElementById('countTabUnique');
+const btnBulkSkipDup = document.getElementById('btnBulkSkipDup');
+const btnBulkMergeDup = document.getElementById('btnBulkMergeDup');
+const btnBulkOverwriteDup = document.getElementById('btnBulkOverwriteDup');
+const btnBulkAddNewDup = document.getElementById('btnBulkAddNewDup');
+const importTableBody = document.getElementById('importTableBody');
+const btnConfirmImport = document.getElementById('btnConfirmImport');
+const btnChangeExcelFile = document.getElementById('btnChangeExcelFile');
+
+let parsedExcelRecords = [];
+let activeImportFilter = 'all';
+
 // ==========================================
 // 3. INIT APPLICATION
 // ==========================================
@@ -721,12 +752,138 @@ function setupEventListeners() {
         }
     });
 
-    // Export CSV
-    btnExportCSV.addEventListener('click', exportToCSV);
+    // Export Excel/CSV
+    btnExportCSV.addEventListener('click', exportToExcel);
 
     // Receipt Modal Close
     btnCloseReceiptModal.addEventListener('click', () => {
         modalReceipt.classList.add('hidden');
+    });
+
+    // Excel Import Event Listeners
+    if (btnImportExcel) {
+        btnImportExcel.addEventListener('click', () => {
+            resetExcelImportState();
+            modalImportExcel.classList.remove('hidden');
+        });
+    }
+
+    if (btnCloseImportModal) {
+        btnCloseImportModal.addEventListener('click', () => {
+            modalImportExcel.classList.add('hidden');
+        });
+    }
+
+    if (btnCancelImportModal) {
+        btnCancelImportModal.addEventListener('click', () => {
+            modalImportExcel.classList.add('hidden');
+        });
+    }
+
+    if (browseExcelBtn && excelFileInput) {
+        browseExcelBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            excelFileInput.click();
+        });
+    }
+
+    if (excelDropZone && excelFileInput) {
+        excelDropZone.addEventListener('click', () => {
+            excelFileInput.click();
+        });
+
+        excelDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            excelDropZone.classList.add('dragover');
+        });
+
+        excelDropZone.addEventListener('dragleave', () => {
+            excelDropZone.classList.remove('dragover');
+        });
+
+        excelDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            excelDropZone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                parseExcelFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        excelFileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                parseExcelFile(e.target.files[0]);
+            }
+        });
+    }
+
+    if (btnChangeExcelFile) {
+        btnChangeExcelFile.addEventListener('click', () => {
+            resetExcelImportState();
+        });
+    }
+
+    if (btnDownloadTemplate) {
+        btnDownloadTemplate.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadSampleExcel();
+        });
+    }
+
+    if (btnConfirmImport) {
+        btnConfirmImport.addEventListener('click', confirmExcelImport);
+    }
+
+    // Bulk action handlers
+    if (btnBulkSkipDup) {
+        btnBulkSkipDup.addEventListener('click', () => {
+            parsedExcelRecords.forEach(r => {
+                if (r.duplicateType !== 'none') r.action = 'skip';
+            });
+            renderImportPreviewTable();
+            showToast('Đã chuyển tất cả dòng trùng tên thành: Bỏ qua', 'info');
+        });
+    }
+
+    if (btnBulkMergeDup) {
+        btnBulkMergeDup.addEventListener('click', () => {
+            parsedExcelRecords.forEach(r => {
+                if (r.duplicateType !== 'none') r.action = 'merge';
+            });
+            renderImportPreviewTable();
+            showToast('Đã chuyển tất cả dòng trùng tên thành: Gộp tài liệu', 'info');
+        });
+    }
+
+    if (btnBulkOverwriteDup) {
+        btnBulkOverwriteDup.addEventListener('click', () => {
+            parsedExcelRecords.forEach(r => {
+                if (r.duplicateType !== 'none') r.action = 'overwrite';
+            });
+            renderImportPreviewTable();
+            showToast('Đã chuyển tất cả dòng trùng tên thành: Ghi đè', 'info');
+        });
+    }
+
+    if (btnBulkAddNewDup) {
+        btnBulkAddNewDup.addEventListener('click', () => {
+            parsedExcelRecords.forEach(r => {
+                if (r.duplicateType !== 'none') r.action = 'add';
+            });
+            renderImportPreviewTable();
+            showToast('Đã chuyển tất cả dòng trùng tên thành: Thêm mới', 'info');
+        });
+    }
+
+    // Filter tabs handlers
+    [tabFilterAll, tabFilterDup, tabFilterUnique].forEach(tab => {
+        if (tab) {
+            tab.addEventListener('click', () => {
+                [tabFilterAll, tabFilterDup, tabFilterUnique].forEach(t => t && t.classList.remove('active'));
+                tab.classList.add('active');
+                activeImportFilter = tab.getAttribute('data-tab');
+                renderImportPreviewTable();
+            });
+        }
     });
 }
 
@@ -1016,37 +1173,91 @@ window.printReceipt = function(id) {
 };
 
 // ==========================================
-// 11. EXPORT EXCEL/CSV (WITH UTF-8 BOM)
+// 11. EXPORT EXCEL (FULL COLLECTED DATA)
 // ==========================================
-function exportToCSV() {
+function exportToExcel() {
     if (transactions.length === 0) {
-        showToast('Không có dữ liệu để xuất file!', 'danger');
+        showToast('Không có dữ liệu để xuất tệp Excel!', 'danger');
         return;
     }
 
-    let csv = '\uFEFF'; // BOM UTF-8 for Excel Vietnamese text
-    csv += 'Mã Giao Dịch,Tên Người,Sản Phẩm Mua,Tổng Tiền (VNĐ),Nhận Tài Liệu,Trạng Thái Đóng Tiền,Hình Thức,Ghi Chú,Ngày Tạo\n';
+    // Headers with ALL collected fields, each in 1 dedicated column
+    const exportRows = [
+        [
+            "STT",
+            "Họ và Tên",
+            "Sản phẩm / Tài liệu mua",
+            "Số tiền thanh toán (VNĐ)",
+            "Trạng thái đóng tiền",
+            "Hình thức thanh toán",
+            "Trạng thái nhận tài liệu",
+            "Ghi chú",
+            "Ngày tạo"
+        ]
+    ];
 
-    transactions.forEach(tx => {
-        const prodList = tx.items.map(i => `${i.name} (x${i.qty})`).join('; ');
-        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận' : 'Chưa nhận';
+    transactions.forEach((tx, idx) => {
+        const prodList = tx.items.map(i => i.qty > 1 ? `${i.name} (x${i.qty})` : i.name).join('; ');
         const statusTxt = tx.status === 'paid' ? 'Đã đóng' : 'Chưa đóng';
         const methodTxt = tx.method === 'bank' ? 'Chuyển khoản' : 'Tiền mặt';
-        const cleanNote = (tx.note || '').replace(/"/g, '""');
+        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận' : 'Chưa nhận';
+        const formattedDate = formatDate ? formatDate(tx.createdAt) : tx.createdAt;
 
-        csv += `"${tx.id}","${tx.personName}","${prodList}","${tx.totalAmount}","${docTxt}","${statusTxt}","${methodTxt}","${cleanNote}","${formatDate(tx.createdAt)}"\n`;
+        exportRows.push([
+            idx + 1,
+            tx.personName,
+            prodList,
+            tx.totalAmount, // Numeric value for easy calculation in Excel
+            statusTxt,
+            methodTxt,
+            docTxt,
+            tx.note || '',
+            formattedDate
+        ]);
     });
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Bao_Cao_Thu_Chi_DH25TIN03_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (typeof XLSX !== 'undefined') {
+        const ws = XLSX.utils.aoa_to_sheet(exportRows);
+        
+        // Auto-set column widths for easy reading & comparison
+        ws['!cols'] = [
+            { wch: 6 },  // STT
+            { wch: 24 }, // Họ và Tên
+            { wch: 50 }, // Sản phẩm mua
+            { wch: 22 }, // Số tiền thanh toán
+            { wch: 20 }, // Trạng thái đóng tiền
+            { wch: 22 }, // Hình thức thanh toán
+            { wch: 22 }, // Trạng thái nhận tài liệu
+            { wch: 30 }, // Ghi chú
+            { wch: 20 }  // Ngày tạo
+        ];
 
-    showToast('Đã xuất file CSV thành công!', 'success');
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Thu_Thap");
+        
+        const fileName = `Danh_Sach_Thu_Chi_Full_${new Date().toISOString().slice(0, 10)}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+        showToast('Đã xuất tệp Excel đầy đủ dữ liệu thành công!', 'success');
+    } else {
+        // Fallback UTF-8 BOM CSV
+        let csv = '\uFEFF';
+        csv += 'STT,Họ và Tên,Sản phẩm / Tài liệu mua,Số tiền thanh toán (VNĐ),Trạng thái đóng tiền,Hình thức thanh toán,Trạng thái nhận tài liệu,Ghi chú,Ngày tạo\n';
+        exportRows.slice(1).forEach(row => {
+            const cleanProd = (row[2] || '').replace(/"/g, '""');
+            const cleanNote = (row[7] || '').replace(/"/g, '""');
+            csv += `"${row[0]}","${row[1]}","${cleanProd}","${row[3]}","${row[4]}","${row[5]}","${row[6]}","${cleanNote}","${row[8]}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Danh_Sach_Thu_Chi_Full_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Đã xuất tệp CSV đầy đủ dữ liệu thành công!', 'success');
+    }
 }
 
 // ==========================================
@@ -1071,3 +1282,463 @@ function loadTheme() {
         themeIcon.className = 'ri-sun-line';
     }
 }
+
+// ==========================================
+// 13. EXCEL FILE IMPORT & DUPLICATE RESOLUTION MODULE
+// ==========================================
+
+function normalizeNameStrict(str) {
+    if (!str) return '';
+    return str.toString().trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function parseExcelFile(file) {
+    if (!file) return;
+    if (typeof XLSX === 'undefined') {
+        showToast('Thư viện XLSX chưa tải xong, vui lòng thử lại sau giây lát!', 'danger');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            if (!rawData || rawData.length < 2) {
+                showToast('Tệp Excel không chứa dữ liệu hoặc thiếu tiêu đề!', 'danger');
+                return;
+            }
+
+            processExcelData(file.name, rawData);
+        } catch (err) {
+            console.error('Excel parse error:', err);
+            showToast('Không thể đọc tệp Excel. Vui lòng kiểm tra lại định dạng tệp!', 'danger');
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function processExcelData(fileName, rawRows) {
+    let headerRowIdx = 0;
+    for (let i = 0; i < Math.min(rawRows.length, 5); i++) {
+        if (rawRows[i].some(cell => cell.toString().trim() !== '')) {
+            headerRowIdx = i;
+            break;
+        }
+    }
+
+    const headers = rawRows[headerRowIdx].map(h => h.toString().trim().toLowerCase());
+    
+    let colName = -1, colItems = -1, colAmount = -1, colStatus = -1, colMethod = -1, colDocStatus = -1, colNote = -1;
+
+    headers.forEach((h, idx) => {
+        if (h.includes('họ') || h.includes('tên') || h.includes('người') || h.includes('name')) {
+            if (colName === -1) colName = idx;
+        } else if (h.includes('tài liệu') || h.includes('sản phẩm') || h.includes('mục') || h.includes('item') || h.includes('product')) {
+            if (colItems === -1) colItems = idx;
+        } else if (h.includes('tiền') || h.includes('giá') || h.includes('amount') || h.includes('price')) {
+            if (colAmount === -1) colAmount = idx;
+        } else if (h.includes('đóng') || h.includes('thanh toán') || h.includes('trạng thái tiền') || h.includes('status')) {
+            if (colStatus === -1) colStatus = idx;
+        } else if (h.includes('hình thức') || h.includes('phương thức') || h.includes('chuyển khoản') || h.includes('method')) {
+            if (colMethod === -1) colMethod = idx;
+        } else if (h.includes('nhận tài liệu') || h.includes('đã nhận') || h.includes('doc')) {
+            if (colDocStatus === -1) colDocStatus = idx;
+        } else if (h.includes('ghi chú') || h.includes('lưu ý') || h.includes('note')) {
+            if (colNote === -1) colNote = idx;
+        }
+    });
+
+    if (colName === -1) colName = 1;
+    if (colItems === -1 && rawRows[headerRowIdx].length > 2) colItems = 2;
+
+    const parsedRecords = [];
+    const dataRows = rawRows.slice(headerRowIdx + 1);
+
+    dataRows.forEach((row, rIdx) => {
+        const rawName = row[colName] ? row[colName].toString().trim() : '';
+        if (!rawName || rawName.toLowerCase() === 'họ và tên' || rawName.toLowerCase() === 'stt' || rawName.toLowerCase() === 'tên người') return;
+
+        const itemsRawStr = colItems !== -1 && row[colItems] ? row[colItems].toString().trim() : '';
+        const amountRaw = colAmount !== -1 && row[colAmount] ? parseFloat(row[colAmount].toString().replace(/[^0-9.]/g, '')) : NaN;
+        const statusRawStr = colStatus !== -1 && row[colStatus] ? row[colStatus].toString().trim().toLowerCase() : '';
+        const methodRawStr = colMethod !== -1 && row[colMethod] ? row[colMethod].toString().trim().toLowerCase() : '';
+        const docStatusRawStr = colDocStatus !== -1 && row[colDocStatus] ? row[colDocStatus].toString().trim().toLowerCase() : '';
+        const noteRawStr = colNote !== -1 && row[colNote] ? row[colNote].toString().trim() : '';
+
+        const isPaid = statusRawStr.includes('đã') || statusRawStr.includes('xong') || statusRawStr.includes('rồi') || statusRawStr.includes('paid') || statusRawStr === '1' || statusRawStr === 'true';
+        const isBank = methodRawStr.includes('ck') || methodRawStr.includes('chuyển') || methodRawStr.includes('bank') || methodRawStr.includes('thẻ');
+        const isDocReceived = !(docStatusRawStr.includes('chưa') || docStatusRawStr.includes('not') || docStatusRawStr === '0' || docStatusRawStr === 'false');
+
+        const itemsList = parseExcelItems(itemsRawStr, isNaN(amountRaw) ? 0 : amountRaw);
+        const calcTotal = itemsList.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+        parsedRecords.push({
+            id: 'import_' + Date.now() + '_' + rIdx,
+            rawRowIndex: rIdx + 1,
+            personName: rawName,
+            normalizedName: normalizeNameStrict(rawName),
+            items: itemsList,
+            totalAmount: isNaN(amountRaw) || amountRaw <= 0 ? calcTotal : amountRaw,
+            status: isPaid ? 'paid' : 'unpaid',
+            method: isBank ? 'bank' : 'cash',
+            docStatus: isDocReceived ? 'received' : 'not_received',
+            note: noteRawStr,
+            duplicateType: 'none',
+            matchedTx: null,
+            matchedExcelIndices: [],
+            action: 'add'
+        });
+    });
+
+    if (parsedRecords.length === 0) {
+        showToast('Không tìm thấy bản ghi người mua hợp lệ trong tệp Excel!', 'danger');
+        return;
+    }
+
+    detectExcelDuplicates(parsedRecords);
+
+    parsedExcelRecords = parsedRecords;
+
+    importFileName.textContent = fileName;
+    excelDropZone.classList.add('hidden');
+    excelPreviewContainer.classList.remove('hidden');
+    btnConfirmImport.disabled = false;
+
+    activeImportFilter = 'all';
+    renderImportPreviewTable();
+}
+
+function parseExcelItems(itemsStr, fallbackPrice) {
+    if (!itemsStr) {
+        const firstProd = productsCatalog[0] || { id: 'p1', name: 'Tài liệu bài giảng', price: fallbackPrice || 10000 };
+        return [{
+            id: firstProd.id,
+            name: firstProd.name,
+            price: fallbackPrice > 0 ? fallbackPrice : firstProd.price,
+            qty: 1
+        }];
+    }
+
+    const parts = itemsStr.split(/;|;|\n|\+|\,/g).map(s => s.trim()).filter(s => s.length > 0);
+    const resultItems = [];
+
+    parts.forEach(partStr => {
+        let qty = 1;
+        let cleanName = partStr;
+        const qtyMatch = partStr.match(/[\(xX\s]*([0-9]+)[\)]*$/);
+        if (qtyMatch && partStr.toLowerCase().includes('x')) {
+            qty = parseInt(qtyMatch[1], 10) || 1;
+            cleanName = partStr.replace(/[\(xX\s]*[0-9]+[\)]*$/, '').trim();
+        }
+
+        const normPart = normalizeNameStrict(cleanName);
+        let catalogMatch = productsCatalog.find(p => {
+            const pNorm = normalizeNameStrict(p.name);
+            return pNorm === normPart || pNorm.includes(normPart) || normPart.includes(pNorm);
+        });
+
+        if (catalogMatch) {
+            resultItems.push({
+                id: catalogMatch.id,
+                name: catalogMatch.name,
+                price: catalogMatch.price,
+                qty
+            });
+        } else {
+            resultItems.push({
+                id: 'custom_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                name: cleanName || partStr,
+                price: fallbackPrice > 0 && parts.length === 1 ? fallbackPrice : 10000,
+                qty
+            });
+        }
+    });
+
+    return resultItems.length > 0 ? resultItems : [{
+        id: 'p1',
+        name: itemsStr,
+        price: fallbackPrice > 0 ? fallbackPrice : 10000,
+        qty: 1
+    }];
+}
+
+function detectExcelDuplicates(records) {
+    const nameMapInExcel = {};
+
+    records.forEach((rec, idx) => {
+        const norm = rec.normalizedName;
+
+        const existingTx = transactions.find(t => normalizeNameStrict(t.personName) === norm);
+        if (existingTx) {
+            rec.duplicateType = 'system';
+            rec.matchedTx = existingTx;
+            rec.action = 'merge';
+        }
+
+        if (!nameMapInExcel[norm]) {
+            nameMapInExcel[norm] = [idx];
+        } else {
+            nameMapInExcel[norm].push(idx);
+        }
+    });
+
+    Object.keys(nameMapInExcel).forEach(norm => {
+        const indices = nameMapInExcel[norm];
+        if (indices.length > 1) {
+            indices.forEach((recIdx, groupPos) => {
+                const rec = records[recIdx];
+                rec.matchedExcelIndices = indices.filter(i => i !== recIdx);
+
+                if (rec.duplicateType === 'none') {
+                    rec.duplicateType = 'excel';
+                    rec.action = groupPos === 0 ? 'add' : 'merge';
+                }
+            });
+        }
+    });
+}
+
+function renderImportPreviewTable() {
+    const totalCount = parsedExcelRecords.length;
+    const dupCount = parsedExcelRecords.filter(r => r.duplicateType !== 'none').length;
+    const uniqueCount = totalCount - dupCount;
+
+    importTotalCount.textContent = `${totalCount} dòng dữ liệu`;
+    importDuplicateCount.textContent = `${dupCount} dòng trùng tên`;
+    importUniqueCount.textContent = `${uniqueCount} dòng hợp lệ`;
+
+    countTabAll.textContent = totalCount;
+    countTabDup.textContent = dupCount;
+    countTabUnique.textContent = uniqueCount;
+
+    let filteredList = parsedExcelRecords;
+    if (activeImportFilter === 'dup') {
+        filteredList = parsedExcelRecords.filter(r => r.duplicateType !== 'none');
+    } else if (activeImportFilter === 'unique') {
+        filteredList = parsedExcelRecords.filter(r => r.duplicateType === 'none');
+    }
+
+    importTableBody.innerHTML = '';
+
+    if (filteredList.length === 0) {
+        importTableBody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+                    Không có dòng dữ liệu nào theo bộ lọc đã chọn.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    filteredList.forEach((rec, displayIdx) => {
+        const tr = document.createElement('tr');
+        
+        let rowClass = 'row-unique';
+        if (rec.action === 'skip') {
+            rowClass = 'row-skipped';
+        } else if (rec.duplicateType !== 'none') {
+            rowClass = 'row-duplicate';
+        }
+        tr.className = rowClass;
+
+        const itemsStr = rec.items.map(i => `${i.name} (x${i.qty})`).join(', ');
+
+        let dupTagHtml = `<span class="dup-tag dup-tag-ok"><i class="ri-checkbox-circle-line"></i> Hợp lệ (Tên mới)</span>`;
+        let matchInfoHtml = '';
+
+        if (rec.duplicateType === 'system') {
+            const existingProds = rec.matchedTx.items.map(i => i.name).join(', ');
+            dupTagHtml = `<span class="dup-tag dup-tag-system"><i class="ri-error-warning-line"></i> Trùng hệ thống</span>`;
+            matchInfoHtml = `<div class="existing-match-info">Đã có bản ghi: <strong>${rec.matchedTx.personName}</strong> (${formatCurrency(rec.matchedTx.totalAmount)}) - Tài liệu: <em>${existingProds}</em></div>`;
+        } else if (rec.duplicateType === 'excel') {
+            dupTagHtml = `<span class="dup-tag dup-tag-excel"><i class="ri-alert-line"></i> Trùng trong Excel</span>`;
+            matchInfoHtml = `<div class="existing-match-info">Xuất hiện ${rec.matchedExcelIndices.length + 1} lần trong tệp Excel này</div>`;
+        }
+
+        const docBadge = rec.docStatus === 'received' ? `<span class="badge badge-success">📦 Đã nhận</span>` : `<span class="badge badge-warning">⏳ Chưa nhận</span>`;
+        const paidBadge = rec.status === 'paid' ? `<span class="badge badge-success">✅ Đã đóng</span>` : `<span class="badge badge-danger">⏳ Chưa đóng</span>`;
+        const methodBadge = rec.method === 'bank' ? `<span class="badge badge-info">🏦 CK</span>` : `<span class="badge badge-info">💵 Tiền mặt</span>`;
+
+        tr.innerHTML = `
+            <td style="text-align: center; font-weight: bold;">${displayIdx + 1}</td>
+            <td>
+                <strong>${rec.personName}</strong>
+                ${rec.note ? `<br><small style="color: var(--text-muted);"><i class="ri-file-text-line"></i> ${rec.note}</small>` : ''}
+            </td>
+            <td><small>${itemsStr}</small></td>
+            <td><strong>${formatCurrency(rec.totalAmount)}</strong></td>
+            <td>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    ${paidBadge}
+                    ${docBadge}
+                </div>
+            </td>
+            <td>
+                ${dupTagHtml}
+                ${matchInfoHtml}
+            </td>
+            <td>
+                <select class="action-select" data-rec-id="${rec.id}">
+                    <option value="merge" ${rec.action === 'merge' ? 'selected' : ''}>🔄 Gộp (Cộng dồn tài liệu)</option>
+                    <option value="overwrite" ${rec.action === 'overwrite' ? 'selected' : ''}>✏️ Ghi đè thông tin cũ</option>
+                    <option value="add" ${rec.action === 'add' ? 'selected' : ''}>➕ Thêm thành bản ghi mới</option>
+                    <option value="skip" ${rec.action === 'skip' ? 'selected' : ''}>🚫 Bỏ qua dòng này</option>
+                </select>
+            </td>
+        `;
+
+        importTableBody.appendChild(tr);
+    });
+
+    document.querySelectorAll('.action-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const recId = e.target.getAttribute('data-rec-id');
+            const newAction = e.target.value;
+            const rec = parsedExcelRecords.find(r => r.id === recId);
+            if (rec) {
+                rec.action = newAction;
+                renderImportPreviewTable();
+            }
+        });
+    });
+}
+
+function downloadSampleExcel() {
+    if (typeof XLSX === 'undefined') {
+        showToast('Thư viện XLSX chưa tải xong, vui lòng thử lại sau giây lát!', 'danger');
+        return;
+    }
+
+    const templateData = [
+        ["STT", "Họ và tên", "Tài liệu đăng ký", "Số tiền (VNĐ)", "Trạng thái đóng tiền", "Hình thức thanh toán", "Trạng thái nhận tài liệu", "Ghi chú"],
+        [1, "Nguyễn Văn An", "Tài liệu bài giảng \"Tâm lý học đại cương\"; Tài liệu Cấu trúc dữ liệu", 20000, "Đã đóng", "Chuyển khoản", "Đã nhận", "Đăng ký đợt 1"],
+        [2, "Trần Thị Bình", "Sách Giáo trình \"Kinh tế Chính trị Mác-Lênin\"", 45000, "Chưa đóng", "Chuyển khoản", "Chưa nhận", "Hẹn tối CK"],
+        [3, "Lê Hoàng Cường", "Tài liệu Giáo trình \"Tâm lý học đại cương\"", 25000, "Đã đóng", "Tiền mặt", "Đã nhận", "Đã thu tại lớp"],
+        [4, "Nguyễn Văn An", "Sách Giáo trình \"Kinh tế Chính trị Mác-Lênin\"", 45000, "Đã đóng", "Chuyển khoản", "Chưa nhận", "Ví dụ trùng tên - Đăng ký thêm sách"],
+        [5, "Phạm Quốc Bảo", "Tài liệu Cấu trúc dữ liệu", 11000, "Đã đóng", "Tiền mặt", "Đã nhận", "Học viên mới"]
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(templateData);
+    
+    ws['!cols'] = [
+        { wch: 6 },
+        { wch: 22 },
+        { wch: 45 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 30 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Danh_Sach_Dang_Ky");
+    
+    XLSX.writeFile(wb, "Mau_Danh_Sach_Dang_Ky_Mua_Tai_Lieu.xlsx");
+    showToast('Đã tải xuống tệp Excel mẫu standard!', 'success');
+}
+
+function confirmExcelImport() {
+    if (parsedExcelRecords.length === 0) return;
+
+    let addedCount = 0;
+    let mergedCount = 0;
+    let overwrittenCount = 0;
+    let skippedCount = 0;
+
+    parsedExcelRecords.forEach(rec => {
+        if (rec.action === 'skip') {
+            skippedCount++;
+            return;
+        }
+
+        if (rec.action === 'merge') {
+            let targetTx = transactions.find(t => normalizeNameStrict(t.personName) === rec.normalizedName);
+
+            if (targetTx) {
+                rec.items.forEach(newItem => {
+                    const existingItem = targetTx.items.find(i => i.id === newItem.id || normalizeNameStrict(i.name) === normalizeNameStrict(newItem.name));
+                    if (existingItem) {
+                        existingItem.qty += newItem.qty;
+                    } else {
+                        targetTx.items.push({ ...newItem });
+                    }
+                });
+
+                targetTx.totalAmount = targetTx.items.reduce((sum, i) => sum + (i.price * i.qty), 0);
+                
+                if (rec.note) {
+                    targetTx.note = targetTx.note ? `${targetTx.note} | Gộp Excel: ${rec.note}` : `Gộp Excel: ${rec.note}`;
+                }
+
+                mergedCount++;
+            } else {
+                addNewTransactionFromRecord(rec);
+                addedCount++;
+            }
+        } else if (rec.action === 'overwrite') {
+            let targetTxIdx = transactions.findIndex(t => normalizeNameStrict(t.personName) === rec.normalizedName);
+            if (targetTxIdx !== -1) {
+                transactions[targetTxIdx] = {
+                    id: transactions[targetTxIdx].id,
+                    personName: rec.personName,
+                    items: rec.items,
+                    totalAmount: rec.totalAmount,
+                    docStatus: rec.docStatus,
+                    status: rec.status,
+                    method: rec.method,
+                    note: rec.note ? `Ghi đè Excel: ${rec.note}` : transactions[targetTxIdx].note,
+                    createdAt: new Date().toISOString()
+                };
+                overwrittenCount++;
+            } else {
+                addNewTransactionFromRecord(rec);
+                addedCount++;
+            }
+        } else {
+            addNewTransactionFromRecord(rec);
+            addedCount++;
+        }
+    });
+
+    saveTransactions();
+    renderTransactionsTable();
+    updateDashboardStats();
+    updatePersonSuggestions();
+
+    modalImportExcel.classList.add('hidden');
+    resetExcelImportState();
+
+    const summaryMsg = `Nhập thành công! (Thêm mới: ${addedCount}, Gộp: ${mergedCount}, Ghi đè: ${overwrittenCount}, Bỏ qua: ${skippedCount})`;
+    showToast(summaryMsg, 'success');
+}
+
+function addNewTransactionFromRecord(rec) {
+    const newTx = {
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        personName: rec.personName,
+        items: rec.items,
+        totalAmount: rec.totalAmount,
+        docStatus: rec.docStatus,
+        status: rec.status,
+        method: rec.method,
+        note: rec.note,
+        createdAt: new Date().toISOString()
+    };
+    transactions.unshift(newTx);
+}
+
+function resetExcelImportState() {
+    parsedExcelRecords = [];
+    excelFileInput.value = '';
+    excelDropZone.classList.remove('hidden');
+    excelPreviewContainer.classList.add('hidden');
+    btnConfirmImport.disabled = true;
+}
+
