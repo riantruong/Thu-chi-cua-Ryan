@@ -222,13 +222,32 @@ function saveProducts() {
 }
 
 function loadTransactions() {
-    const saved = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
-    if (saved) {
-        try {
-            transactions = JSON.parse(saved);
-        } catch (e) {
-            transactions = [];
+    const keysToTry = [
+        'smart_tracker_transactions_v2',
+        'smart_tracker_transactions_v1',
+        'smart_tracker_transactions',
+        'ryan_thu_chi_transactions',
+        'transactions',
+        'smart_tracker_backup_tx'
+    ];
+
+    let maxRecords = [];
+    keysToTry.forEach(key => {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > maxRecords.length) {
+                    maxRecords = parsed;
+                }
+            } catch (e) {}
         }
+    });
+
+    if (maxRecords.length > 0) {
+        transactions = maxRecords;
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+        localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
     } else {
         transactions = [...SAMPLE_TRANSACTIONS];
         saveTransactions();
@@ -237,6 +256,7 @@ function loadTransactions() {
 
 function saveTransactions() {
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+    localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
     scheduleCloudSave();
 }
 
@@ -255,21 +275,42 @@ function startCloudSync() {
         const cloudData = snapshot.data();
         if (!Array.isArray(cloudData.products) || !Array.isArray(cloudData.transactions)) return;
 
-        applyingCloudUpdate = true;
-        productsCatalog = cloudData.products;
-        transactions = cloudData.transactions;
-        localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
-        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+        // Check local storage records
+        const localSavedRaw = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
+        const backupSavedRaw = localStorage.getItem('smart_tracker_backup_tx');
+        let localTx = [];
+        try {
+            const parsedLocal = JSON.parse(localSavedRaw) || [];
+            const parsedBackup = JSON.parse(backupSavedRaw) || [];
+            localTx = parsedLocal.length >= parsedBackup.length ? parsedLocal : parsedBackup;
+        } catch(e){}
+
+        // PRESERVE LOCAL DATA: If local has MORE transactions than cloud (e.g. user's 48 records),
+        // keep local data and push to Cloud Firestore instead of wiping local!
+        if (localTx.length > cloudData.transactions.length) {
+            transactions = localTx;
+            console.log(`Bảo tồn ${localTx.length} giao dịch cục bộ. Tải ngược lên Cloud Firestore.`);
+            scheduleCloudSave();
+        } else {
+            applyingCloudUpdate = true;
+            if (Array.isArray(cloudData.products) && cloudData.products.length > 0) {
+                productsCatalog = cloudData.products;
+            }
+            transactions = cloudData.transactions;
+            localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
+            localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
+            localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
+            applyingCloudUpdate = false;
+        }
 
         renderProductSelectionForm();
         renderTransactionsTable();
         updateDashboardStats();
         updatePersonSuggestions();
         if (!modalManageProducts.classList.contains('hidden')) renderCatalogModalList();
-        applyingCloudUpdate = false;
     }, (error) => {
         console.error('Firestore sync error:', error);
-        showToast('KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘á»“ng bá»™ dá»¯ liá»‡u. Kiá»ƒm tra Cloud Firestore vÃ  quy tắc truy cáº­p.', 'danger');
+        showToast('Không thể kết nối đồng bộ dữ liệu. Kiểm tra Cloud Firestore và quy tắc truy cập.', 'danger');
     });
 }
 
