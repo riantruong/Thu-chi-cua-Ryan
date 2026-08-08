@@ -10,6 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <!-- SheetJS (xlsx) for reading/writing Excel files -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="light-mode">
@@ -26,6 +28,9 @@
                 </div>
             </div>
             <div class="header-actions">
+                <button id="btnImportExcel" class="btn btn-primary" title="Tải tệp Excel danh sách đăng ký & lọc trùng tên">
+                    <i class="ri-file-upload-line"></i> Tải Tệp Excel
+                </button>
                 <button id="btnManageProducts" class="btn btn-secondary">
                     <i class="ri-shopping-bag-3-line"></i> Danh Mục Tài Liệu
                 </button>
@@ -362,6 +367,96 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="window.print()"><i class="ri-printer-line"></i> In Phiếu Thu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: IMPORT EXCEL & DUPLICATE RESOLUTION -->
+    <div class="modal-backdrop hidden" id="modalImportExcel">
+        <div class="modal-content modal-xl glass shadow-lg">
+            <div class="modal-header">
+                <h3><i class="ri-file-excel-2-line"></i> Nhập Danh Sách Đăng Ký Từ Excel & Lọc Trùng Tên</h3>
+                <button class="btn-close" id="btnCloseImportModal"><i class="ri-close-line"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- UPLOAD ZONE -->
+                <div class="excel-upload-zone" id="excelDropZone">
+                    <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" class="hidden-file-input">
+                    <div class="upload-icon-wrapper">
+                        <i class="ri-cloud-upload-line upload-icon"></i>
+                    </div>
+                    <h4>Kéo thả tệp Excel vào đây hoặc <span class="browse-link" id="browseExcelBtn">tải lên từ máy tính</span></h4>
+                    <p class="upload-hint">Hỗ trợ định dạng .xlsx, .xls, .csv</p>
+                    <div class="upload-actions">
+                        <button type="button" class="btn btn-sm btn-outline" id="btnDownloadTemplate">
+                            <i class="ri-file-download-line"></i> Tải Tệp Excel Mẫu Standard (.xlsx)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PREVIEW & DUPLICATE REVIEW CONTAINER -->
+                <div id="excelPreviewContainer" class="excel-preview-container hidden">
+                    <div class="excel-file-summary glass-sm">
+                        <div class="file-summary-info">
+                            <div class="excel-icon-box">
+                                <i class="ri-file-excel-2-fill text-success"></i>
+                            </div>
+                            <div>
+                                <h4 id="importFileName">Danh_sach_dang_ky.xlsx</h4>
+                                <div class="summary-badges">
+                                    <span class="badge badge-info" id="importTotalCount">0 dòng dữ liệu</span>
+                                    <span class="badge badge-warning" id="importDuplicateCount">0 dòng trùng tên</span>
+                                    <span class="badge badge-success" id="importUniqueCount">0 dòng hợp lệ</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline" id="btnChangeExcelFile">
+                            <i class="ri-refresh-line"></i> Chọn tệp khác
+                        </button>
+                    </div>
+
+                    <!-- BULK RESOLUTION ACTIONS & FILTERS -->
+                    <div class="duplicate-toolbar">
+                        <div class="filter-tabs">
+                            <button type="button" class="tab-btn active" data-tab="all" id="tabFilterAll">Tất cả (<span id="countTabAll">0</span>)</button>
+                            <button type="button" class="tab-btn tab-warning" data-tab="dup" id="tabFilterDup">⚠️ Cần lọc trùng (<span id="countTabDup">0</span>)</button>
+                            <button type="button" class="tab-btn tab-success" data-tab="unique" id="tabFilterUnique">✅ Hợp lệ (<span id="countTabUnique">0</span>)</button>
+                        </div>
+                        <div class="bulk-actions">
+                            <span class="bulk-label">Thao tác nhanh dòng trùng:</span>
+                            <button type="button" class="btn btn-xs btn-outline-danger" id="btnBulkSkipDup" title="Bỏ qua tất cả các dòng trùng tên">🚫 Bỏ qua trùng</button>
+                            <button type="button" class="btn btn-xs btn-outline-info" id="btnBulkMergeDup" title="Gộp tài liệu đăng ký mới vào bản ghi cũ">🔄 Gộp trùng</button>
+                            <button type="button" class="btn btn-xs btn-outline-warning" id="btnBulkOverwriteDup" title="Ghi đè thông tin cũ bằng dữ liệu Excel">✏️ Ghi đè trùng</button>
+                            <button type="button" class="btn btn-xs btn-outline-primary" id="btnBulkAddNewDup" title="Giữ cả hai bản ghi trùng tên">➕ Thêm mới tất cả</button>
+                        </div>
+                    </div>
+
+                    <!-- DUPLICATE REVIEW TABLE -->
+                    <div class="table-responsive import-table-wrapper">
+                        <table class="data-table import-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 45px; text-align: center;">STT</th>
+                                    <th>Tên Người Trong Excel</th>
+                                    <th>Sản Phẩm / Tài Liệu Đăng Ký</th>
+                                    <th>Tổng Tiền</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Tình Trạng Trùng Tên</th>
+                                    <th style="min-width: 190px;">Thao Tác Xử Lý Thủ Công</th>
+                                </tr>
+                            </thead>
+                            <tbody id="importTableBody">
+                                <!-- JS will populate rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" id="btnCancelImportModal">Hủy</button>
+                <button type="button" class="btn btn-primary btn-lg" id="btnConfirmImport" disabled>
+                    <i class="ri-check-double-line"></i> Xác Nhận Nhập Vượt Qua Lọc Trùng
+                </button>
             </div>
         </div>
     </div>
