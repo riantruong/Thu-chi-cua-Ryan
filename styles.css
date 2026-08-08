@@ -1740,3 +1740,28 @@ body {
     vertical-align: middle;
 }
 
+/* PAID AMOUNT INPUT STYLES */
+.paid-amount-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.quick-paid-btns {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.glass-sm {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+}
+
+.padding-sm {
+    padding: 14px;
+}
+
