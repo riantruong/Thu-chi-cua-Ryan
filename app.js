@@ -98,6 +98,11 @@ const personInputHint = document.getElementById('personInputHint');
 const productSelectionList = document.getElementById('productSelectionList');
 const selectAllProducts = document.getElementById('selectAllProducts');
 const formCalculatedTotal = document.getElementById('formCalculatedTotal');
+const paidAmountInput = document.getElementById('paidAmountInput');
+const formRemainingDebtBadge = document.getElementById('formRemainingDebtBadge');
+const btnQuickPaidFull = document.getElementById('btnQuickPaidFull');
+const btnQuickPaidHalf = document.getElementById('btnQuickPaidHalf');
+const btnQuickPaidZero = document.getElementById('btnQuickPaidZero');
 const editTransactionIdInput = document.getElementById('editTransactionId');
 const formTitle = document.getElementById('formTitle');
 const btnCancelEdit = document.getElementById('btnCancelEdit');
@@ -448,6 +453,43 @@ function calculateFormTotal() {
         }
     });
     formCalculatedTotal.textContent = formatCurrency(total);
+    updateFormDebtDisplay();
+    return total;
+}
+
+function updateFormDebtDisplay() {
+    const total = calculateFormTotalNoRecurse();
+    if (!paidAmountInput) return;
+
+    const rawVal = parseFloat(paidAmountInput.value);
+    const paidVal = isNaN(rawVal) ? 0 : rawVal;
+    const debt = Math.max(0, total - paidVal);
+
+    if (formRemainingDebtBadge) {
+        if (debt === 0 && total > 0) {
+            formRemainingDebtBadge.className = 'badge badge-success';
+            formRemainingDebtBadge.textContent = '✅ Đã đóng đủ (100%)';
+        } else if (paidVal > 0 && debt > 0) {
+            formRemainingDebtBadge.className = 'badge badge-warning';
+            formRemainingDebtBadge.textContent = `🌗 Còn nợ: ${formatCurrency(debt)}`;
+        } else if (total > 0 && paidVal <= 0) {
+            formRemainingDebtBadge.className = 'badge badge-danger';
+            formRemainingDebtBadge.textContent = `⏳ Chưa đóng (Nợ ${formatCurrency(total)})`;
+        } else {
+            formRemainingDebtBadge.className = 'badge badge-info';
+            formRemainingDebtBadge.textContent = 'Còn nợ: 0 VNĐ';
+        }
+    }
+}
+
+function calculateFormTotalNoRecurse() {
+    let total = 0;
+    Object.keys(selectedFormProducts).forEach(prodId => {
+        const prod = productsCatalog.find(p => p.id === prodId);
+        if (prod) {
+            total += prod.price * selectedFormProducts[prodId];
+        }
+    });
     return total;
 }
 
@@ -512,10 +554,18 @@ function renderTransactionsTable() {
                 ? `<span class="badge badge-received" title="Bấm để chuyển sang Chưa nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-checkbox-circle-line"></i> Đã nhận TL</span>`
                 : `<span class="badge badge-warning" title="Bấm để chuyển sang Đã nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-time-line"></i> Chưa nhận TL (Tích đổi)</span>`;
 
-            // Status Badge
-            const statusBadge = tx.status === 'paid'
-                ? `<span class="badge badge-success"><i class="ri-checkbox-circle-line"></i> Đã đóng</span>`
-                : `<span class="badge badge-danger" title="Bấm để chuyển sang Đã đóng tiền" onclick="togglePaymentStatus('${tx.id}')"><i class="ri-time-line"></i> Chưa đóng (Tích đổi)</span>`;
+            // Status Badge with Transferred & Debt Info
+            const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
+            const txDebt = Math.max(0, tx.totalAmount - txPaid);
+
+            let statusBadge = '';
+            if (txPaid >= tx.totalAmount && tx.totalAmount > 0) {
+                statusBadge = `<span class="badge badge-success" title="Bấm để cập nhật lại số tiền đã chuyển" onclick="promptUpdatePaidAmount('${tx.id}')"><i class="ri-checkbox-circle-line"></i> Đã đóng đủ (${formatCurrency(txPaid)})</span>`;
+            } else if (txPaid > 0) {
+                statusBadge = `<span class="badge badge-warning" title="Bấm để cập nhật lại số tiền đã chuyển" onclick="promptUpdatePaidAmount('${tx.id}')"><i class="ri-history-line"></i> Đã chuyển ${formatCurrency(txPaid)} (Nợ ${formatCurrency(txDebt)})</span>`;
+            } else {
+                statusBadge = `<span class="badge badge-danger" title="Bấm để cập nhật lại số tiền đã chuyển" onclick="promptUpdatePaidAmount('${tx.id}')"><i class="ri-time-line"></i> Chưa đóng (Nợ ${formatCurrency(tx.totalAmount)})</span>`;
+            }
 
             // Method Badge
             const methodBadge = tx.method === 'bank'
@@ -568,26 +618,31 @@ function updateDashboardStats() {
     let cashAmount = 0;
 
     transactions.forEach(tx => {
+        const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
+        const txDebt = Math.max(0, tx.totalAmount - txPaid);
+
         total += tx.totalAmount;
-        if (tx.status === 'paid') {
-            paid += tx.totalAmount;
+        paid += txPaid;
+        unpaid += txDebt;
+
+        if (txPaid >= tx.totalAmount && tx.totalAmount > 0) {
             paidCount++;
-            if (tx.method === 'bank') bankAmount += tx.totalAmount;
-            if (tx.method === 'cash') cashAmount += tx.totalAmount;
         } else {
-            unpaid += tx.totalAmount;
             unpaidCount++;
         }
+
+        if (tx.method === 'bank') bankAmount += txPaid;
+        if (tx.method === 'cash') cashAmount += txPaid;
     });
 
     statTotalAmount.textContent = formatCurrency(total);
     statTotalCount.textContent = `${transactions.length} người đăng ký`;
 
     statPaidAmount.textContent = formatCurrency(paid);
-    statPaidCount.textContent = `${paidCount} / ${transactions.length} người đã đóng`;
+    statPaidCount.textContent = `${paidCount} / ${transactions.length} người đóng đủ`;
 
     statUnpaidAmount.textContent = formatCurrency(unpaid);
-    statUnpaidCount.textContent = `${unpaidCount} người chưa đóng`;
+    statUnpaidCount.textContent = `${unpaidCount} người còn nợ`;
 
     statBankAmount.textContent = formatCurrency(bankAmount);
     statCashAmount.textContent = formatCurrency(cashAmount);
@@ -804,6 +859,64 @@ function setupEventListeners() {
     // Export Excel/CSV
     btnExportCSV.addEventListener('click', exportToExcel);
 
+    // Paid Amount Input Listeners
+    if (paidAmountInput) {
+        paidAmountInput.addEventListener('input', () => {
+            updateFormDebtDisplay();
+            const total = calculateFormTotalNoRecurse();
+            const val = parseFloat(paidAmountInput.value) || 0;
+            if (val >= total && total > 0) {
+                const paidRadio = document.querySelector('input[name="paymentStatus"][value="paid"]');
+                if (paidRadio) paidRadio.checked = true;
+            } else if (val <= 0) {
+                const unpaidRadio = document.querySelector('input[name="paymentStatus"][value="unpaid"]');
+                if (unpaidRadio) unpaidRadio.checked = true;
+            }
+        });
+    }
+
+    if (btnQuickPaidFull) {
+        btnQuickPaidFull.addEventListener('click', () => {
+            const total = calculateFormTotalNoRecurse();
+            if (paidAmountInput) paidAmountInput.value = total;
+            const paidRadio = document.querySelector('input[name="paymentStatus"][value="paid"]');
+            if (paidRadio) paidRadio.checked = true;
+            updateFormDebtDisplay();
+        });
+    }
+
+    if (btnQuickPaidHalf) {
+        btnQuickPaidHalf.addEventListener('click', () => {
+            const total = calculateFormTotalNoRecurse();
+            const half = Math.round(total / 2);
+            if (paidAmountInput) paidAmountInput.value = half;
+            updateFormDebtDisplay();
+        });
+    }
+
+    if (btnQuickPaidZero) {
+        btnQuickPaidZero.addEventListener('click', () => {
+            if (paidAmountInput) paidAmountInput.value = 0;
+            const unpaidRadio = document.querySelector('input[name="paymentStatus"][value="unpaid"]');
+            if (unpaidRadio) unpaidRadio.checked = true;
+            updateFormDebtDisplay();
+        });
+    }
+
+    document.querySelectorAll('input[name="paymentStatus"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            const total = calculateFormTotalNoRecurse();
+            if (e.target.value === 'paid') {
+                if (paidAmountInput && (!paidAmountInput.value || parseFloat(paidAmountInput.value) <= 0)) {
+                    paidAmountInput.value = total;
+                }
+            } else if (e.target.value === 'unpaid') {
+                if (paidAmountInput) paidAmountInput.value = 0;
+            }
+            updateFormDebtDisplay();
+        });
+    });
+
     // Receipt Modal Close
     btnCloseReceiptModal.addEventListener('click', () => {
         modalReceipt.classList.add('hidden');
@@ -960,17 +1073,28 @@ function saveTransactionFromForm() {
         };
     });
 
-    const totalAmount = calculateFormTotal();
+    const totalAmount = calculateFormTotalNoRecurse();
     const docStatusRadio = document.querySelector('input[name="docStatus"]:checked');
     const docStatus = docStatusRadio ? docStatusRadio.value : 'received';
     const status = document.querySelector('input[name="paymentStatus"]:checked').value;
     const method = document.querySelector('input[name="paymentMethod"]:checked').value;
     const note = document.getElementById('transactionNote').value.trim();
 
+    const rawPaidVal = parseFloat(paidAmountInput ? paidAmountInput.value : '');
+    const paidAmount = isNaN(rawPaidVal) ? (status === 'paid' ? totalAmount : 0) : Math.max(0, rawPaidVal);
+
+    let computedStatus = status;
+    if (paidAmount >= totalAmount && totalAmount > 0) {
+        computedStatus = 'paid';
+    } else if (paidAmount <= 0) {
+        computedStatus = 'unpaid';
+    } else {
+        computedStatus = 'partial';
+    }
+
     const editId = editTransactionIdInput.value;
 
     if (editId) {
-        // Edit existing
         const index = transactions.findIndex(t => t.id === editId);
         if (index !== -1) {
             transactions[index] = {
@@ -978,22 +1102,23 @@ function saveTransactionFromForm() {
                 personName,
                 items,
                 totalAmount,
+                paidAmount,
                 docStatus,
-                status,
+                status: computedStatus,
                 method,
                 note
             };
             showToast(`Đã cập nhật giao dịch của ${personName}!`, 'success');
         }
     } else {
-        // Create new
         const newTx = {
             id: 'tx_' + Date.now(),
             personName,
             items,
             totalAmount,
+            paidAmount,
             docStatus,
-            status,
+            status: computedStatus,
             method,
             note,
             createdAt: new Date().toISOString()
@@ -1013,6 +1138,7 @@ function resetForm() {
     transactionForm.reset();
     editTransactionIdInput.value = '';
     selectedFormProducts = {};
+    if (paidAmountInput) paidAmountInput.value = '';
     formTitle.textContent = 'Nhập Thu Chi Theo Người';
     btnSubmitForm.innerHTML = `<i class="ri-save-3-line"></i> Lưu Giao Dịch Thu Chi`;
     btnCancelEdit.classList.add('hidden');
@@ -1022,7 +1148,72 @@ function resetForm() {
 
     renderProductSelectionForm();
     toggleStep2Accordion();
+    updateFormDebtDisplay();
 }
+
+window.promptUpdatePaidAmount = function(id) {
+    const tx = transactions.find(t => t.id === id);
+    if (!tx) return;
+
+    const currentPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
+    const input = prompt(`Nhập số tiền thực tế ${tx.personName} đã chuyển (VNĐ):\nTổng tiền đơn hàng: ${formatCurrency(tx.totalAmount)}`, currentPaid);
+    
+    if (input !== null && input.trim() !== '') {
+        const val = parseFloat(input.replace(/[^0-9.]/g, ''));
+        if (!isNaN(val) && val >= 0) {
+            tx.paidAmount = val;
+            if (val >= tx.totalAmount && tx.totalAmount > 0) {
+                tx.status = 'paid';
+            } else if (val <= 0) {
+                tx.status = 'unpaid';
+            } else {
+                tx.status = 'partial';
+            }
+            saveTransactions();
+            renderTransactionsTable();
+            updateDashboardStats();
+            showToast(`Đã cập nhật số tiền đã chuyển của ${tx.personName}: ${formatCurrency(val)}`, 'success');
+        } else {
+            showToast('Số tiền nhập vào không hợp lệ!', 'danger');
+        }
+    }
+};
+
+window.startEditTransaction = function(id) {
+    const tx = transactions.find(t => t.id === id);
+    if (!tx) return;
+
+    editTransactionIdInput.value = tx.id;
+    personNameInput.value = tx.personName;
+    formTitle.textContent = `Chỉnh Sửa Giao Dịch: ${tx.personName}`;
+    btnSubmitForm.innerHTML = `<i class="ri-save-3-line"></i> Cập Nhật Giao Dịch`;
+    btnCancelEdit.classList.remove('hidden');
+
+    selectedFormProducts = {};
+    tx.items.forEach(item => {
+        selectedFormProducts[item.id] = item.qty;
+    });
+
+    const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
+    if (paidAmountInput) paidAmountInput.value = txPaid;
+
+    const docRadio = document.querySelector(`input[name="docStatus"][value="${tx.docStatus || 'received'}"]`);
+    if (docRadio) docRadio.checked = true;
+
+    const statusVal = tx.status === 'partial' ? 'paid' : (tx.status || 'paid');
+    const statusRadio = document.querySelector(`input[name="paymentStatus"][value="${statusVal}"]`);
+    if (statusRadio) statusRadio.checked = true;
+
+    const methodRadio = document.querySelector(`input[name="paymentMethod"][value="${tx.method || 'bank'}"]`);
+    if (methodRadio) methodRadio.checked = true;
+
+    document.getElementById('transactionNote').value = tx.note || '';
+
+    renderProductSelectionForm();
+    toggleStep2Accordion();
+    updateFormDebtDisplay();
+    window.scrollTo({ top: transactionForm.offsetTop - 80, behavior: 'smooth' });
+};
 
 window.togglePaymentStatus = function(id) {
     const tx = transactions.find(t => t.id === id);
@@ -1239,13 +1430,15 @@ async function exportToExcel() {
         }
     }
 
-    // Header matching the UI table layout exactly:
+    // Header matching the UI table layout with paid & debt amount:
     const exportRows = [
         [
             "STT",
             "TÊN NGƯỜI",
             "SẢN PHẨM TÍCH CHỌN",
-            "TỔNG TIỀN",
+            "TỔNG TIỀN (VNĐ)",
+            "ĐÃ CHUYỂN (VNĐ)",
+            "CÒN NỢ (VNĐ)",
             "NHẬN TÀI LIỆU",
             "TRẠNG THÁI ĐÓNG TIỀN",
             "HÌNH THỨC",
@@ -1255,17 +1448,24 @@ async function exportToExcel() {
 
     transactions.forEach((tx, idx) => {
         const prodList = tx.items.map(i => `${i.name} x${i.qty}`).join('\n');
-        const totalStr = formatCurrency(tx.totalAmount);
-        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận TL' : 'Chưa nhận';
-        const statusTxt = tx.status === 'paid' ? 'Đã đóng' : 'Chưa đóng';
+        const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
+        const txDebt = Math.max(0, tx.totalAmount - txPaid);
+
+        let statusTxt = 'Chưa đóng';
+        if (txPaid >= tx.totalAmount && tx.totalAmount > 0) statusTxt = 'Đã đóng đủ';
+        else if (txPaid > 0) statusTxt = `Đã đóng 1 phần (${formatCurrency(txPaid)})`;
+
         const methodTxt = tx.method === 'bank' ? 'Chuyển khoản' : 'Tiền mặt';
+        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận TL' : 'Chưa nhận';
         const formattedDate = formatDate(tx.createdAt);
 
         exportRows.push([
             idx + 1,
             tx.personName,
             prodList,
-            totalStr,
+            tx.totalAmount,
+            txPaid,
+            txDebt,
             docTxt,
             statusTxt,
             methodTxt,
