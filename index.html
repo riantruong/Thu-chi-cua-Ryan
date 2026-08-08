@@ -193,6 +193,25 @@
                             </div>
                         </div>
 
+                        <!-- SỐ TIỀN ĐÃ CHUYỂN / ĐÃ ĐÓNG THỰC TẾ -->
+                        <div class="form-group margin-top-md glass-sm padding-sm">
+                            <div class="paid-amount-header">
+                                <label for="paidAmountInput" class="form-label required">
+                                    <i class="ri-money-dollar-circle-fill text-success"></i> Số tiền đã chuyển / đã đóng (VNĐ):
+                                </label>
+                                <span class="badge badge-warning" id="formRemainingDebtBadge">Còn nợ: 0 VNĐ</span>
+                            </div>
+                            <div class="input-with-icon">
+                                <input type="number" id="paidAmountInput" class="form-control form-control-lg" placeholder="👉 Nhập số tiền thực tế người đó đã chuyển..." min="0" step="1000">
+                                <i class="ri-hand-coin-line input-icon" style="color:var(--primary)"></i>
+                            </div>
+                            <div class="quick-paid-btns">
+                                <button type="button" class="btn btn-xs btn-outline-success" id="btnQuickPaidFull">💯 Chuyển đủ 100%</button>
+                                <button type="button" class="btn btn-xs btn-outline-info" id="btnQuickPaidHalf">🌗 Chuyển 50%</button>
+                                <button type="button" class="btn btn-xs btn-outline-danger" id="btnQuickPaidZero">0đ Chưa chuyển</button>
+                            </div>
+                        </div>
+
                         <div class="form-row">
                             <!-- 3. ĐÃ ĐÓNG HAY CHƯA ĐÓNG -->
                             <div class="form-group col-6">
@@ -473,6 +492,6 @@
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script type="module" src="app.js?v=4"></script>
+    <script type="module" src="app.js?v=5"></script>
 </body>
 </html>
