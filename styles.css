@@ -994,10 +994,62 @@ body {
 .product-tag {
     background: var(--bg-main);
     border: 1px solid var(--border-color);
-    padding: 3px 8px;
+    padding: 4px 10px;
     border-radius: 20px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.product-tag:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.product-tag.tag-received {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: rgba(5, 150, 105, 0.3);
+}
+
+.product-tag.tag-pending {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.product-right-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.btn-success-soft {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid rgba(5, 150, 105, 0.3);
+    font-weight: 600;
+}
+
+.btn-success-soft:hover {
+    background: var(--primary);
+    color: #ffffff;
+}
+
+.btn-warning-soft {
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    font-weight: 600;
+}
+
+.btn-warning-soft:hover {
+    background: var(--warning);
+    color: #ffffff;
 }
 
 .amount-cell {
