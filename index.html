@@ -295,6 +295,15 @@
                             <option value="bank">🏦 Chuyển khoản</option>
                             <option value="cash">💵 Tiền mặt</option>
                         </select>
+
+                        <select id="sortOrder" class="form-control select-control" title="Sắp xếp danh sách">
+                            <option value="name_asc">🔤 Sắp xếp Tên (A ➔ Z)</option>
+                            <option value="name_desc">🔤 Sắp xếp Tên (Z ➔ A)</option>
+                            <option value="date_desc" selected>📅 Mới nhất trước</option>
+                            <option value="date_asc">📅 Cũ nhất trước</option>
+                            <option value="amount_desc">💰 Số tiền cao ➔ thấp</option>
+                            <option value="amount_asc">💰 Số tiền thấp ➔ cao</option>
+                        </select>
                     </div>
                 </div>
 
@@ -304,7 +313,7 @@
                         <thead>
                             <tr>
                                 <th style="width: 55px; text-align: center;">STT</th>
-                                <th>Tên Người</th>
+                                <th id="thSortPersonName" class="sortable-header" title="Bấm để sắp xếp theo Tên chính (Ví dụ: Định, An, Bình...)">Tên Người <i class="ri-arrow-up-down-line sort-icon"></i></th>
                                 <th>Sản Phẩm Tích Chọn</th>
                                 <th>Tổng Tiền</th>
                                 <th>Nhận Tài Liệu</th>
@@ -464,6 +473,6 @@
     <!-- TOAST NOTIFICATION CONTAINER -->
     <div id="toastContainer" class="toast-container"></div>
 
-    <script type="module" src="app.js?v=3"></script>
+    <script type="module" src="app.js?v=4"></script>
 </body>
 </html>
