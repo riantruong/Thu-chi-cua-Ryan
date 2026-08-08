@@ -1175,10 +1175,19 @@ window.printReceipt = function(id) {
 // ==========================================
 // 11. EXPORT EXCEL (MATCH EXACT TABLE LAYOUT)
 // ==========================================
-function exportToExcel() {
+async function exportToExcel() {
     if (transactions.length === 0) {
         showToast('Không có dữ liệu để xuất tệp Excel!', 'danger');
         return;
+    }
+
+    // Ensure XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+        try {
+            await loadExternalScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+        } catch (e) {
+            console.warn('XLSX dynamic load error:', e);
+        }
     }
 
     // Header matching the UI table layout exactly:
@@ -1235,10 +1244,11 @@ function exportToExcel() {
         
         const fileName = `Bao_Cao_Thu_Chi_DH25TIN03_${new Date().toISOString().slice(0, 10)}.xlsx`;
         XLSX.writeFile(wb, fileName);
-        showToast('Đã xuất tệp Excel theo đúng bố cục bảng!', 'success');
+        showToast('Đã xuất tệp Excel (.xlsx) chuẩn nhiều cột thành công!', 'success');
     } else {
-        // Fallback UTF-8 BOM CSV
+        // Fallback UTF-8 BOM CSV with sep=, header directive for Excel
         let csv = '\uFEFF';
+        csv += 'sep=,\n';
         csv += 'STT,TÊN NGƯỜI,SẢN PHẨM TÍCH CHỌN,TỔNG TIỀN,NHẬN TÀI LIỆU,TRẠNG THÁI ĐÓNG TIỀN,HÌNH THỨC,NGÀY TẠO\n';
         exportRows.slice(1).forEach(row => {
             const cleanProd = (row[2] || '').replace(/"/g, '""').replace(/\n/g, '; ');
@@ -1253,8 +1263,18 @@ function exportToExcel() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        showToast('Đã xuất tệp CSV thành công!', 'success');
+        showToast('Đã xuất tệp CSV chia cột thành công!', 'success');
     }
+}
+
+function loadExternalScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
 }
 
 // ==========================================
