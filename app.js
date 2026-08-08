@@ -103,6 +103,8 @@ const formRemainingDebtBadge = document.getElementById('formRemainingDebtBadge')
 const btnQuickPaidFull = document.getElementById('btnQuickPaidFull');
 const btnQuickPaidHalf = document.getElementById('btnQuickPaidHalf');
 const btnQuickPaidZero = document.getElementById('btnQuickPaidZero');
+const btnQuickReceiveAllItems = document.getElementById('btnQuickReceiveAllItems');
+const btnQuickPendingAllItems = document.getElementById('btnQuickPendingAllItems');
 const editTransactionIdInput = document.getElementById('editTransactionId');
 const formTitle = document.getElementById('formTitle');
 const btnCancelEdit = document.getElementById('btnCancelEdit');
@@ -366,7 +368,9 @@ function renderProductSelectionForm() {
     }
 
     productsCatalog.forEach(prod => {
-        const qty = selectedFormProducts[prod.id] || 0;
+        const itemData = selectedFormProducts[prod.id];
+        const qty = typeof itemData === 'object' ? itemData.qty : (itemData || 0);
+        const received = typeof itemData === 'object' ? (itemData.received !== false) : true;
         const isSelected = qty > 0;
 
         const row = document.createElement('div');
@@ -379,22 +383,44 @@ function renderProductSelectionForm() {
                     <div class="product-price-txt">${formatCurrency(prod.price)}</div>
                 </div>
             </div>
-            <div class="qty-control">
-                <button type="button" class="qty-btn btn-minus" data-id="${prod.id}">-</button>
-                <span class="qty-val">${qty}</span>
-                <button type="button" class="qty-btn btn-plus" data-id="${prod.id}">+</button>
+            <div class="product-right-controls">
+                ${isSelected ? `
+                    <button type="button" class="btn btn-xs ${received ? 'btn-success-soft' : 'btn-warning-soft'} btn-item-doc-toggle" data-id="${prod.id}" title="Bấm để đổi trạng thái đã lấy / chưa lấy cuốn này">
+                        ${received ? '📦 Đã lấy' : '⏳ Chưa lấy'}
+                    </button>
+                ` : ''}
+                <div class="qty-control">
+                    <button type="button" class="qty-btn btn-minus" data-id="${prod.id}">-</button>
+                    <span class="qty-val">${qty}</span>
+                    <button type="button" class="qty-btn btn-plus" data-id="${prod.id}">+</button>
+                </div>
             </div>
         `;
 
-        // Click anywhere on row to toggle selection (except when clicking qty controls)
-        row.addEventListener('click', (e) => {
-            if (e.target.closest('.qty-control')) return;
-            if (e.target.classList.contains('custom-checkbox')) return; // handled by change event
+        // Toggle item received status
+        const btnToggleRec = row.querySelector('.btn-item-doc-toggle');
+        if (btnToggleRec) {
+            btnToggleRec.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (typeof selectedFormProducts[prod.id] === 'object') {
+                    selectedFormProducts[prod.id].received = !selectedFormProducts[prod.id].received;
+                } else {
+                    selectedFormProducts[prod.id] = { qty: selectedFormProducts[prod.id] || 1, received: false };
+                }
+                renderProductSelectionForm();
+            });
+        }
 
-            if (selectedFormProducts[prod.id] > 0) {
+        // Click anywhere on row to toggle selection (except when clicking controls)
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.qty-control') || e.target.closest('.btn-item-doc-toggle')) return;
+            if (e.target.classList.contains('custom-checkbox')) return;
+
+            const currentQty = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].qty : (selectedFormProducts[prod.id] || 0);
+            if (currentQty > 0) {
                 delete selectedFormProducts[prod.id];
             } else {
-                selectedFormProducts[prod.id] = 1;
+                selectedFormProducts[prod.id] = { qty: 1, received: true };
             }
             renderProductSelectionForm();
             calculateFormTotal();
@@ -404,7 +430,8 @@ function renderProductSelectionForm() {
         const checkbox = row.querySelector('.custom-checkbox');
         checkbox.addEventListener('change', (e) => {
             if (e.target.checked) {
-                selectedFormProducts[prod.id] = selectedFormProducts[prod.id] || 1;
+                const currentQty = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].qty : (selectedFormProducts[prod.id] || 0);
+                selectedFormProducts[prod.id] = { qty: currentQty || 1, received: true };
             } else {
                 delete selectedFormProducts[prod.id];
             }
@@ -418,8 +445,11 @@ function renderProductSelectionForm() {
 
         btnMinus.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (selectedFormProducts[prod.id] > 1) {
-                selectedFormProducts[prod.id] -= 1;
+            const currentQty = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].qty : (selectedFormProducts[prod.id] || 0);
+            const currentRec = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].received !== false : true;
+
+            if (currentQty > 1) {
+                selectedFormProducts[prod.id] = { qty: currentQty - 1, received: currentRec };
             } else {
                 delete selectedFormProducts[prod.id];
             }
@@ -429,14 +459,16 @@ function renderProductSelectionForm() {
 
         btnPlus.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (!selectedFormProducts[prod.id]) {
-                selectedFormProducts[prod.id] = 1;
-            } else {
-                selectedFormProducts[prod.id] += 1;
-            }
+            const currentQty = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].qty : (selectedFormProducts[prod.id] || 0);
+            const currentRec = typeof selectedFormProducts[prod.id] === 'object' ? selectedFormProducts[prod.id].received !== false : true;
+
+            selectedFormProducts[prod.id] = { qty: (currentQty || 0) + 1, received: currentRec };
             renderProductSelectionForm();
             calculateFormTotal();
         });
+
+        productSelectionList.appendChild(row);
+    });
 
         productSelectionList.appendChild(row);
     });
@@ -543,16 +575,27 @@ function renderTransactionsTable() {
         filtered.forEach((tx, index) => {
             const tr = document.createElement('tr');
             
-            // Build items HTML badges
-            const itemsHtml = tx.items.map(item => 
-                `<span class="product-tag">${item.name} <strong>x${item.qty}</strong></span>`
-            ).join('');
+            // Build items HTML badges with individual receipt status!
+            const itemsHtml = tx.items.map(item => {
+                const isRec = item.received !== false;
+                const tagClass = isRec ? 'product-tag tag-received' : 'product-tag tag-pending';
+                const icon = isRec ? '<i class="ri-checkbox-circle-fill" style="color:var(--primary)"></i>' : '<i class="ri-time-fill" style="color:var(--warning)"></i>';
+                const statusTxt = isRec ? 'Đã lấy' : 'Chưa lấy';
+                return `<span class="${tagClass}" title="Bấm để đổi trạng thái đã lấy/chưa lấy cuốn này (${item.name})" onclick="toggleSpecificItemReceived('${tx.id}', '${item.id}')">${icon} ${item.name} <strong>x${item.qty}</strong> (${statusTxt})</span>`;
+            }).join('');
 
-            // Document Receipt Badge
-            const currentDocStatus = tx.docStatus || 'received';
-            const docStatusBadge = currentDocStatus === 'received'
-                ? `<span class="badge badge-received" title="Bấm để chuyển sang Chưa nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-checkbox-circle-line"></i> Đã nhận TL</span>`
-                : `<span class="badge badge-warning" title="Bấm để chuyển sang Đã nhận tài liệu" onclick="toggleDocStatus('${tx.id}')"><i class="ri-time-line"></i> Chưa nhận TL (Tích đổi)</span>`;
+            // Overall Document Receipt Badge & Count
+            const totalItemsCount = tx.items.length;
+            const recItemsCount = tx.items.filter(i => i.received !== false).length;
+            
+            let docStatusBadge = '';
+            if (recItemsCount === totalItemsCount && totalItemsCount > 0) {
+                docStatusBadge = `<span class="badge badge-received" title="Tất cả tài liệu đã được lấy. Bấm để đổi tất cả thành chưa lấy" onclick="toggleAllOrderDocs('${tx.id}')"><i class="ri-checkbox-circle-line"></i> Đã lấy đủ (${recItemsCount}/${totalItemsCount} cuốn)</span>`;
+            } else if (recItemsCount > 0) {
+                docStatusBadge = `<span class="badge badge-warning" title="Đã lấy một số cuốn. Bấm để đổi tất cả thành đã lấy" onclick="toggleAllOrderDocs('${tx.id}')"><i class="ri-history-line"></i> Lấy ${recItemsCount}/${totalItemsCount} cuốn (Còn ${totalItemsCount - recItemsCount} cuốn)</span>`;
+            } else {
+                docStatusBadge = `<span class="badge badge-danger" title="Chưa lấy cuốn nào. Bấm để đổi tất cả thành đã lấy" onclick="toggleAllOrderDocs('${tx.id}')"><i class="ri-time-line"></i> Chưa lấy cuốn nào (0/${totalItemsCount})</span>`;
+            }
 
             // Status Badge with Transferred & Debt Info
             const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
@@ -705,7 +748,8 @@ function updateProductStatsBreakdown() {
                 stat.unpaidQty += item.qty;
             }
 
-            if (isDocReceived) {
+            const itemRec = item.received !== false;
+            if (itemRec) {
                 stat.receivedQty += item.qty;
             } else {
                 stat.notReceivedQty += item.qty;
@@ -1062,20 +1106,27 @@ function saveTransactionFromForm() {
         return;
     }
 
-    // Build items array
+    // Build items array with individual received status
     const items = selectedProductIds.map(prodId => {
         const prod = productsCatalog.find(p => p.id === prodId);
+        const itemData = selectedFormProducts[prodId];
+        const qty = typeof itemData === 'object' ? itemData.qty : (itemData || 1);
+        const received = typeof itemData === 'object' ? (itemData.received !== false) : true;
         return {
             id: prodId,
             name: prod ? prod.name : 'Sản phẩm',
             price: prod ? prod.price : 0,
-            qty: selectedFormProducts[prodId]
+            qty: qty,
+            received: received
         };
     });
 
-    const totalAmount = calculateFormTotalNoRecurse();
-    const docStatusRadio = document.querySelector('input[name="docStatus"]:checked');
-    const docStatus = docStatusRadio ? docStatusRadio.value : 'received';
+    // Auto determine overall order docStatus
+    const recCount = items.filter(i => i.received).length;
+    let docStatus = 'received';
+    if (recCount === items.length) docStatus = 'received';
+    else if (recCount === 0) docStatus = 'not_received';
+    else docStatus = 'partial_received';
     const status = document.querySelector('input[name="paymentStatus"]:checked').value;
     const method = document.querySelector('input[name="paymentMethod"]:checked').value;
     const note = document.getElementById('transactionNote').value.trim();
@@ -1177,6 +1228,45 @@ window.promptUpdatePaidAmount = function(id) {
             showToast('Số tiền nhập vào không hợp lệ!', 'danger');
         }
     }
+};
+
+window.toggleSpecificItemReceived = function(txId, itemId) {
+    const tx = transactions.find(t => t.id === txId);
+    if (!tx) return;
+
+    const item = tx.items.find(i => i.id === itemId);
+    if (item) {
+        item.received = !(item.received !== false);
+        
+        const recCount = tx.items.filter(i => i.received !== false).length;
+        if (recCount === tx.items.length) tx.docStatus = 'received';
+        else if (recCount === 0) tx.docStatus = 'not_received';
+        else tx.docStatus = 'partial_received';
+
+        saveTransactions();
+        renderTransactionsTable();
+        updateDashboardStats();
+        showToast(`Đã đổi trạng thái "${item.name}": ${item.received ? '📦 Đã lấy' : '⏳ Chưa lấy'}`, 'info');
+    }
+};
+
+window.toggleAllOrderDocs = function(txId) {
+    const tx = transactions.find(t => t.id === txId);
+    if (!tx) return;
+
+    const recCount = tx.items.filter(i => i.received !== false).length;
+    const makeAllReceived = recCount < tx.items.length;
+
+    tx.items.forEach(i => {
+        i.received = makeAllReceived;
+    });
+
+    tx.docStatus = makeAllReceived ? 'received' : 'not_received';
+
+    saveTransactions();
+    renderTransactionsTable();
+    updateDashboardStats();
+    showToast(`Đã đổi tất cả tài liệu của ${tx.personName} thành: ${makeAllReceived ? '📦 Đã lấy tất cả' : '⏳ Chưa lấy cuốn nào'}`, 'info');
 };
 
 window.startEditTransaction = function(id) {
@@ -1447,7 +1537,7 @@ async function exportToExcel() {
     ];
 
     transactions.forEach((tx, idx) => {
-        const prodList = tx.items.map(i => `${i.name} x${i.qty}`).join('\n');
+        const prodList = tx.items.map(i => `${i.name} x${i.qty} [${i.received !== false ? '📦 Đã lấy' : '⏳ Chưa lấy'}]`).join('\n');
         const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
         const txDebt = Math.max(0, tx.totalAmount - txPaid);
 
@@ -1456,7 +1546,11 @@ async function exportToExcel() {
         else if (txPaid > 0) statusTxt = `Đã đóng 1 phần (${formatCurrency(txPaid)})`;
 
         const methodTxt = tx.method === 'bank' ? 'Chuyển khoản' : 'Tiền mặt';
-        const docTxt = (tx.docStatus || 'received') === 'received' ? 'Đã nhận TL' : 'Chưa nhận';
+        
+        const recCount = tx.items.filter(i => i.received !== false).length;
+        const totalCount = tx.items.length;
+        const docTxt = recCount === totalCount ? `Đã lấy đủ (${recCount}/${totalCount})` : (recCount === 0 ? `Chưa lấy cuốn nào (0/${totalCount})` : `Lấy ${recCount}/${totalCount} cuốn`);
+
         const formattedDate = formatDate(tx.createdAt);
 
         exportRows.push([
