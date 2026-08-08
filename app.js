@@ -124,6 +124,8 @@ const searchInput = document.getElementById('searchInput');
 const filterDocStatus = document.getElementById('filterDocStatus');
 const filterStatus = document.getElementById('filterStatus');
 const filterMethod = document.getElementById('filterMethod');
+const sortOrder = document.getElementById('sortOrder');
+const thSortPersonName = document.getElementById('thSortPersonName');
 
 // Actions & Modals
 const btnThemeToggle = document.getElementById('btnThemeToggle');
@@ -300,6 +302,23 @@ function formatDate(isoString) {
     });
 }
 
+function getPrimaryName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1] || '';
+}
+
+function compareVietnameseNames(nameA, nameB, isAscending = true) {
+    const firstNameA = getPrimaryName(nameA);
+    const firstNameB = getPrimaryName(nameB);
+
+    let comp = firstNameA.localeCompare(firstNameB, 'vi', { sensitivity: 'base' });
+    if (comp === 0) {
+        comp = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' });
+    }
+    return isAscending ? comp : -comp;
+}
+
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -451,6 +470,24 @@ function renderTransactionsTable() {
         const matchMethod = (methodVal === 'all') || (tx.method === methodVal);
 
         return matchSearch && matchDocStatus && matchStatus && matchMethod;
+    });
+
+    // Apply Sorting (Sort by Vietnamese First Name "Tên chính", Date, or Amount)
+    const sortOrderVal = sortOrder ? sortOrder.value : 'date_desc';
+    filtered.sort((a, b) => {
+        if (sortOrderVal === 'name_asc') {
+            return compareVietnameseNames(a.personName, b.personName, true);
+        } else if (sortOrderVal === 'name_desc') {
+            return compareVietnameseNames(a.personName, b.personName, false);
+        } else if (sortOrderVal === 'date_asc') {
+            return new Date(a.createdAt) - new Date(b.createdAt);
+        } else if (sortOrderVal === 'amount_desc') {
+            return b.totalAmount - a.totalAmount;
+        } else if (sortOrderVal === 'amount_asc') {
+            return a.totalAmount - b.totalAmount;
+        } else {
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        }
     });
 
     transactionTableBody.innerHTML = '';
@@ -713,6 +750,18 @@ function setupEventListeners() {
     if (filterDocStatus) filterDocStatus.addEventListener('change', renderTransactionsTable);
     filterStatus.addEventListener('change', renderTransactionsTable);
     filterMethod.addEventListener('change', renderTransactionsTable);
+    if (sortOrder) sortOrder.addEventListener('change', renderTransactionsTable);
+
+    if (thSortPersonName) {
+        thSortPersonName.addEventListener('click', () => {
+            if (sortOrder.value === 'name_asc') {
+                sortOrder.value = 'name_desc';
+            } else {
+                sortOrder.value = 'name_asc';
+            }
+            renderTransactionsTable();
+        });
+    }
 
     // Dark Theme Toggle
     btnThemeToggle.addEventListener('click', toggleTheme);
