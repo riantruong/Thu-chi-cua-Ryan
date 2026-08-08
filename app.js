@@ -406,7 +406,7 @@ function renderProductSelectionForm() {
     // Sync select-all checkbox state
     if (selectAllProducts) {
         const totalProds = productsCatalog.length;
-        const selectedCount = productsCatalog.filter(p => selectedFormProducts[p.id] > 0).length;
+        const selectedCount = productsCatalog.filter(p => getFormItemQty(p.id) > 0).length;
         selectAllProducts.checked = totalProds > 0 && selectedCount === totalProds;
     }
 
@@ -513,10 +513,14 @@ function renderProductSelectionForm() {
         productSelectionList.appendChild(row);
     });
 
-        productSelectionList.appendChild(row);
-    });
-
     calculateFormTotal();
+}
+
+function getFormItemQty(prodId) {
+    const item = selectedFormProducts[prodId];
+    if (!item) return 0;
+    if (typeof item === 'object') return item.qty || 0;
+    return typeof item === 'number' ? item : 0;
 }
 
 function calculateFormTotal() {
@@ -524,7 +528,7 @@ function calculateFormTotal() {
     Object.keys(selectedFormProducts).forEach(prodId => {
         const prod = productsCatalog.find(p => p.id === prodId);
         if (prod) {
-            total += prod.price * selectedFormProducts[prodId];
+            total += prod.price * getFormItemQty(prodId);
         }
     });
     formCalculatedTotal.textContent = formatCurrency(total);
@@ -562,7 +566,7 @@ function calculateFormTotalNoRecurse() {
     Object.keys(selectedFormProducts).forEach(prodId => {
         const prod = productsCatalog.find(p => p.id === prodId);
         if (prod) {
-            total += prod.price * selectedFormProducts[prodId];
+            total += prod.price * getFormItemQty(prodId);
         }
     });
     return total;
@@ -865,7 +869,7 @@ function setupEventListeners() {
         selectAllProducts.addEventListener('change', (e) => {
             if (e.target.checked) {
                 productsCatalog.forEach(prod => {
-                    selectedFormProducts[prod.id] = 1;
+                    selectedFormProducts[prod.id] = { qty: 1, received: true };
                 });
             } else {
                 selectedFormProducts = {};
