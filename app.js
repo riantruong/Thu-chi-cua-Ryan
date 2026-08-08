@@ -855,12 +855,12 @@ function toggleStep2Accordion() {
     if (nameVal.length > 0) {
         step2Container.classList.remove('collapsed');
         personInputHint.className = 'person-hint success';
-        personInputHint.innerHTML = `<i class="ri-checkbox-circle-fill"></i> Đã nhập tên "<strong>${nameVal}</strong>"! Hãy tích chọn các mục sản phẩm bên dưới:`;
+        personInputHint.innerHTML = `Đã nhập tên "<strong>${nameVal}</strong>"! Hãy tích chọn các mục sản phẩm bên dưới:`;
     } else {
         if (!editTransactionIdInput.value) {
             step2Container.classList.add('collapsed');
             personInputHint.className = 'person-hint';
-            personInputHint.innerHTML = `<i class="ri-corner-down-right-line"></i> Nhập tên người ở trên để mở danh sách sản phẩm tích chọn`;
+            personInputHint.innerHTML = `Nhập tên người ở trên để mở danh sách sản phẩm tích chọn`;
         }
     }
 }
@@ -1000,6 +1000,49 @@ function setupEventListeners() {
             const unpaidRadio = document.querySelector('input[name="paymentStatus"][value="unpaid"]');
             if (unpaidRadio) unpaidRadio.checked = true;
             updateFormDebtDisplay();
+        });
+    }
+
+    // Quick Item Pickup Status Handlers (Đã lấy tất cả cuốn chọn / Chưa lấy cuốn nào)
+    if (btnQuickReceiveAllItems) {
+        btnQuickReceiveAllItems.addEventListener('click', () => {
+            const selectedKeys = Object.keys(selectedFormProducts).filter(id => getFormItemQty(id) > 0);
+            if (selectedKeys.length > 0) {
+                selectedKeys.forEach(prodId => {
+                    const item = selectedFormProducts[prodId];
+                    const qty = typeof item === 'object' ? item.qty : (item || 1);
+                    selectedFormProducts[prodId] = { qty: qty, received: true };
+                });
+                showToast('Đã đánh dấu TẤT CẢ các cuốn đã chọn thành: Đã lấy', 'success');
+            } else if (productsCatalog.length > 0) {
+                productsCatalog.forEach(prod => {
+                    selectedFormProducts[prod.id] = { qty: 1, received: true };
+                });
+                showToast('Đã chọn tất cả tài liệu và đánh dấu: Đã lấy', 'success');
+            }
+            renderProductSelectionForm();
+            calculateFormTotal();
+        });
+    }
+
+    if (btnQuickPendingAllItems) {
+        btnQuickPendingAllItems.addEventListener('click', () => {
+            const selectedKeys = Object.keys(selectedFormProducts).filter(id => getFormItemQty(id) > 0);
+            if (selectedKeys.length > 0) {
+                selectedKeys.forEach(prodId => {
+                    const item = selectedFormProducts[prodId];
+                    const qty = typeof item === 'object' ? item.qty : (item || 1);
+                    selectedFormProducts[prodId] = { qty: qty, received: false };
+                });
+                showToast('Đã đánh dấu TẤT CẢ các cuốn đã chọn thành: Chưa lấy', 'info');
+            } else if (productsCatalog.length > 0) {
+                productsCatalog.forEach(prod => {
+                    selectedFormProducts[prod.id] = { qty: 1, received: false };
+                });
+                showToast('Đã chọn tất cả tài liệu và đánh dấu: Chưa lấy', 'info');
+            }
+            renderProductSelectionForm();
+            calculateFormTotal();
         });
     }
 
@@ -1255,9 +1298,6 @@ function resetForm() {
     btnSubmitForm.innerHTML = `<i class="ri-save-3-line"></i> Lưu Giao Dịch Thu Chi`;
     btnCancelEdit.classList.add('hidden');
 
-    const defaultDocRadio = document.querySelector('input[name="docStatus"][value="received"]');
-    if (defaultDocRadio) defaultDocRadio.checked = true;
-
     renderProductSelectionForm();
     toggleStep2Accordion();
     updateFormDebtDisplay();
@@ -1350,9 +1390,6 @@ window.startEditTransaction = function(id) {
 
     const txPaid = typeof tx.paidAmount === 'number' ? tx.paidAmount : (tx.status === 'paid' ? tx.totalAmount : 0);
     if (paidAmountInput) paidAmountInput.value = txPaid;
-
-    const docRadio = document.querySelector(`input[name="docStatus"][value="${tx.docStatus || 'received'}"]`);
-    if (docRadio) docRadio.checked = true;
 
     const statusVal = tx.status === 'partial' ? 'paid' : (tx.status || 'paid');
     const statusRadio = document.querySelector(`input[name="paymentStatus"][value="${statusVal}"]`);
