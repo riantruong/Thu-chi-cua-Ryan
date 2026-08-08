@@ -223,6 +223,7 @@ function saveProducts() {
 
 function loadTransactions() {
     const keysToTry = [
+        'smart_tracker_backup_tx_48',
         'smart_tracker_transactions_v2',
         'smart_tracker_transactions_v1',
         'smart_tracker_transactions',
@@ -247,7 +248,7 @@ function loadTransactions() {
     if (maxRecords.length > 0) {
         transactions = maxRecords;
         localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
-        localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
+        localStorage.setItem('smart_tracker_backup_tx_48', JSON.stringify(transactions));
     } else {
         transactions = [...SAMPLE_TRANSACTIONS];
         saveTransactions();
@@ -256,7 +257,9 @@ function loadTransactions() {
 
 function saveTransactions() {
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
-    localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
+    if (transactions.length >= 3) {
+        localStorage.setItem('smart_tracker_backup_tx_48', JSON.stringify(transactions));
+    }
     scheduleCloudSave();
 }
 
@@ -275,9 +278,9 @@ function startCloudSync() {
         const cloudData = snapshot.data();
         if (!Array.isArray(cloudData.products) || !Array.isArray(cloudData.transactions)) return;
 
-        // Check local storage records
+        // Compare cloud data vs local storage
         const localSavedRaw = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
-        const backupSavedRaw = localStorage.getItem('smart_tracker_backup_tx');
+        const backupSavedRaw = localStorage.getItem('smart_tracker_backup_tx_48');
         let localTx = [];
         try {
             const parsedLocal = JSON.parse(localSavedRaw) || [];
@@ -285,11 +288,9 @@ function startCloudSync() {
             localTx = parsedLocal.length >= parsedBackup.length ? parsedLocal : parsedBackup;
         } catch(e){}
 
-        // PRESERVE LOCAL DATA: If local has MORE transactions than cloud (e.g. user's 48 records),
-        // keep local data and push to Cloud Firestore instead of wiping local!
         if (localTx.length > cloudData.transactions.length) {
             transactions = localTx;
-            console.log(`Bảo tồn ${localTx.length} giao dịch cục bộ. Tải ngược lên Cloud Firestore.`);
+            console.log(`Bảo tồn ${localTx.length} dữ liệu người dùng. Đang cập nhật lại Cloud.`);
             scheduleCloudSave();
         } else {
             applyingCloudUpdate = true;
@@ -299,7 +300,9 @@ function startCloudSync() {
             transactions = cloudData.transactions;
             localStorage.setItem(STORAGE_KEY_PRODUCTS, JSON.stringify(productsCatalog));
             localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
-            localStorage.setItem('smart_tracker_backup_tx', JSON.stringify(transactions));
+            if (transactions.length > 3) {
+                localStorage.setItem('smart_tracker_backup_tx_48', JSON.stringify(transactions));
+            }
             applyingCloudUpdate = false;
         }
 
@@ -310,7 +313,6 @@ function startCloudSync() {
         if (!modalManageProducts.classList.contains('hidden')) renderCatalogModalList();
     }, (error) => {
         console.error('Firestore sync error:', error);
-        showToast('Không thể kết nối đồng bộ dữ liệu. Kiểm tra Cloud Firestore và quy tắc truy cập.', 'danger');
     });
 }
 
