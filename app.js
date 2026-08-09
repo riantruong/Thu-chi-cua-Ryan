@@ -826,9 +826,9 @@ function updateProductStatsBreakdown() {
             <div class="prod-stat-left">
                 <div class="prod-stat-title" title="${stat.name}">${stat.name}</div>
                 <div class="prod-stat-sub">
-                    <span class="text-success">✅ Đã thu: ${stat.paidQty}</span> | 
-                    <span class="text-danger">⏳ Nợ: ${stat.unpaidQty}</span> |
-                    <span style="color: var(--info);">📦 Đã nhận: ${stat.receivedQty}</span>
+                    <span class="text-success">Đã thu: ${stat.paidQty}</span> | 
+                    <span class="text-danger">Nợ: ${stat.unpaidQty}</span> |
+                    <span style="color: var(--info);">Đã nhận: ${stat.receivedQty}</span>
                 </div>
             </div>
             <div class="prod-stat-right">
