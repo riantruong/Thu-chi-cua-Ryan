@@ -1458,11 +1458,16 @@ function renderCatalogModalList() {
         itemDiv.innerHTML = `
             <div class="catalog-info">
                 <strong>${prod.name}</strong>
-                <span>${formatCurrency(prod.price)}</span>
+                <span class="catalog-price" id="price-display-${prod.id}">${formatCurrency(prod.price)}</span>
             </div>
-            <button class="btn btn-sm btn-ghost" onclick="deleteCatalogProduct('${prod.id}')">
-                <i class="ri-delete-bin-line" style="color:var(--danger)"></i>
-            </button>
+            <div class="catalog-actions">
+                <button class="btn btn-sm btn-ghost btn-edit-price" onclick="editCatalogProductPrice('${prod.id}')" title="Chỉnh sửa giá">
+                    <i class="ri-pencil-line" style="color:var(--primary)"></i>
+                </button>
+                <button class="btn btn-sm btn-ghost" onclick="deleteCatalogProduct('${prod.id}')" title="Xóa tài liệu">
+                    <i class="ri-delete-bin-line" style="color:var(--danger)"></i>
+                </button>
+            </div>
         `;
         catalogListContainer.appendChild(itemDiv);
     });
@@ -1504,6 +1509,72 @@ window.deleteCatalogProduct = function(id) {
         renderProductSelectionForm();
         showToast('Đã xóa sản phẩm.', 'info');
     }
+};
+
+window.editCatalogProductPrice = function(id) {
+    const prod = productsCatalog.find(p => p.id === id);
+    if (!prod) return;
+
+    const priceDisplay = document.getElementById(`price-display-${id}`);
+    if (!priceDisplay) return;
+
+    // Nếu đang edit rồi thì không tạo thêm
+    if (document.getElementById(`price-input-${id}`)) return;
+
+    // Tạo inline input thay thế span giá
+    const currentPrice = prod.price;
+    const inputWrapper = document.createElement('div');
+    inputWrapper.className = 'price-edit-inline';
+    inputWrapper.id = `price-input-${id}`;
+    inputWrapper.innerHTML = `
+        <input type="number" class="price-edit-input" value="${currentPrice}" min="0" step="500"
+               id="price-edit-value-${id}" placeholder="Nhập giá mới" />
+        <button class="btn-save-price" onclick="saveCatalogProductPrice('${id}')" title="Lưu">
+            <i class="ri-check-line"></i>
+        </button>
+        <button class="btn-cancel-price" onclick="cancelEditCatalogPrice('${id}')" title="Hủy">
+            <i class="ri-close-line"></i>
+        </button>
+    `;
+    priceDisplay.replaceWith(inputWrapper);
+
+    // Focus input
+    const input = document.getElementById(`price-edit-value-${id}`);
+    if (input) {
+        input.focus();
+        input.select();
+        // Lưu khi nhấn Enter
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') window.saveCatalogProductPrice(id);
+            if (e.key === 'Escape') window.cancelEditCatalogPrice(id);
+        });
+    }
+};
+
+window.saveCatalogProductPrice = function(id) {
+    const prod = productsCatalog.find(p => p.id === id);
+    if (!prod) return;
+
+    const input = document.getElementById(`price-edit-value-${id}`);
+    const newPrice = parseFloat(input ? input.value : '');
+
+    if (isNaN(newPrice) || newPrice < 0) {
+        showToast('Giá tiền không hợp lệ!', 'danger');
+        return;
+    }
+
+    const oldPrice = prod.price;
+    prod.price = newPrice;
+    saveProducts();
+    renderCatalogModalList();
+    renderProductSelectionForm();
+    showToast(`Đã cập nhật giá "${prod.name}" từ ${formatCurrency(oldPrice)} → ${formatCurrency(newPrice)}`, 'success');
+};
+
+window.cancelEditCatalogPrice = function(id) {
+    const prod = productsCatalog.find(p => p.id === id);
+    if (!prod) return;
+    renderCatalogModalList();
 };
 
 // ==========================================
