@@ -634,10 +634,21 @@ function renderTransactionsTable() {
             // Build items HTML badges with individual receipt status!
             const itemsHtml = tx.items.map(item => {
                 const isRec = item.received !== false;
-                const tagClass = isRec ? 'product-tag tag-received' : 'product-tag tag-pending';
-                const icon = isRec ? '<i class="ri-checkbox-circle-fill" style="color:var(--primary)"></i>' : '<i class="ri-time-fill" style="color:var(--warning)"></i>';
-                const statusTxt = isRec ? 'Đã lấy' : 'Chưa lấy';
-                return `<span class="${tagClass}" title="Bấm để đổi trạng thái đã lấy/chưa lấy cuốn này (${item.name})" onclick="toggleSpecificItemReceived('${tx.id}', '${item.id}')">${icon} ${item.name} <strong>x${item.qty}</strong> (${statusTxt})</span>`;
+                const isDeleted = !productsCatalog.find(p => p.id === item.id);
+                const tagClass = isDeleted
+                    ? 'product-tag tag-deleted'
+                    : (isRec ? 'product-tag tag-received' : 'product-tag tag-pending');
+                const icon = isDeleted
+                    ? '<i class="ri-close-circle-line" style="color:var(--text-muted)"></i>'
+                    : (isRec ? '<i class="ri-checkbox-circle-fill" style="color:var(--primary)"></i>' : '<i class="ri-time-fill" style="color:var(--warning)"></i>');
+                const statusTxt = isDeleted
+                    ? 'Đã xóa'
+                    : (isRec ? 'Đã lấy' : 'Chưa lấy');
+                const clickAttr = isDeleted ? '' : `onclick="toggleSpecificItemReceived('${tx.id}', '${item.id}')"` ;
+                const titleTxt = isDeleted
+                    ? `Tài liệu "${item.name}" đã bị xóa khỏi danh mục`
+                    : `Bấm để đổi trạng thái đã lấy/chưa lấy cuốn này (${item.name})`;
+                return `<span class="${tagClass}" title="${titleTxt}" ${clickAttr}>${icon} ${item.name} <strong>x${item.qty}</strong> (${statusTxt})</span>`;
             }).join('');
 
             // Overall Document Receipt Badge & Count
@@ -819,12 +830,26 @@ function updateProductStatsBreakdown() {
 
     productStatsGrid.innerHTML = '';
 
-    Object.values(statsMap).forEach(stat => {
+    // Tách riêng: tài liệu còn trong catalog vs đã xóa
+    const activeCatalogIds = new Set(productsCatalog.map(p => p.id));
+    const activeStats = {};
+    const deletedStats = {};
+    Object.entries(statsMap).forEach(([id, stat]) => {
+        if (activeCatalogIds.has(id)) {
+            activeStats[id] = stat;
+        } else {
+            deletedStats[id] = stat;
+        }
+    });
+
+    const renderStatCard = (stat, isDeleted = false) => {
         const itemCard = document.createElement('div');
-        itemCard.className = 'prod-stat-item';
+        itemCard.className = isDeleted ? 'prod-stat-item prod-stat-deleted' : 'prod-stat-item';
         itemCard.innerHTML = `
             <div class="prod-stat-left">
-                <div class="prod-stat-title" title="${stat.name}">${stat.name}</div>
+                <div class="prod-stat-title" title="${stat.name}">
+                    ${isDeleted ? '<i class="ri-close-circle-line" style="color:var(--text-muted);font-size:12px;"></i> ' : ''}${stat.name}${isDeleted ? ' <span class="badge-deleted-label">Đã xóa</span>' : ''}
+                </div>
                 <div class="prod-stat-sub">
                     <span class="text-success">Đã thu: ${stat.paidQty}</span> | 
                     <span class="text-danger">Nợ: ${stat.unpaidQty}</span> |
@@ -833,11 +858,23 @@ function updateProductStatsBreakdown() {
             </div>
             <div class="prod-stat-right">
                 <div class="prod-stat-qty">${stat.totalQty} <small style="font-size:11px; font-weight:500;">bản</small></div>
-                <div style="font-size:11px; font-weight:700; color:var(--primary);">${formatCurrency(stat.revenue)}</div>
+                <div style="font-size:11px; font-weight:700; color:${isDeleted ? 'var(--text-muted)' : 'var(--primary)'}">${formatCurrency(stat.revenue)}</div>
             </div>
         `;
         productStatsGrid.appendChild(itemCard);
-    });
+    };
+
+    // Render tài liệu đang hoạt động trước
+    Object.values(activeStats).forEach(stat => renderStatCard(stat, false));
+
+    // Render tài liệu đã xóa (nếu có dữ liệu lịch sử)
+    if (Object.keys(deletedStats).length > 0) {
+        const sep = document.createElement('div');
+        sep.className = 'stat-deleted-separator';
+        sep.innerHTML = '<i class="ri-information-line"></i> Tài liệu đã xóa khỏi danh mục (còn dữ liệu lịch sử)';
+        productStatsGrid.appendChild(sep);
+        Object.values(deletedStats).forEach(stat => renderStatCard(stat, true));
+    }
 }
 
 function updatePersonSuggestions() {
@@ -1501,13 +1538,23 @@ function addNewCatalogProduct() {
 
 window.deleteCatalogProduct = function(id) {
     const prod = productsCatalog.find(p => p.id === id);
-    if (confirm(`Xóa sản phẩm "${prod ? prod.name : ''}" khỏi danh mục?`)) {
+    if (!prod) return;
+
+    // Đếm số giao dịch có liên quan đến tài liệu này
+    const affectedCount = transactions.filter(tx => tx.items.some(i => i.id === id)).length;
+    const confirmMsg = affectedCount > 0
+        ? `Xóa tài liệu "${prod.name}" khỏi danh mục?\n\n⚠️ Lưu ý: Có ${affectedCount} giao dịch đã ghi lại tài liệu này. Chúng sẽ được đánh dấu "Đã xóa" trong lịch sử.`
+        : `Xóa tài liệu "${prod.name}" khỏi danh mục?`;
+
+    if (confirm(confirmMsg)) {
         productsCatalog = productsCatalog.filter(p => p.id !== id);
         delete selectedFormProducts[id];
         saveProducts();
         renderCatalogModalList();
         renderProductSelectionForm();
-        showToast('Đã xóa sản phẩm.', 'info');
+        renderTransactionsTable();   // Cập nhật lịch sử để hiển thị badge "Đã xóa"
+        updateDashboardStats();      // Cập nhật thống kê, tách mục đã xóa
+        showToast(`Đã xóa tài liệu "${prod.name}" khỏi danh mục.`, 'info');
     }
 };
 
