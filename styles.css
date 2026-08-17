@@ -1205,6 +1205,84 @@ body {
     font-weight: 700;
 }
 
+.catalog-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.btn-edit-price {
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-edit-price:hover {
+    transform: scale(1.15);
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border-radius: var(--radius-sm);
+}
+
+/* Inline price editor */
+.price-edit-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.price-edit-input {
+    width: 110px;
+    padding: 4px 8px;
+    border: 1.5px solid var(--primary);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    background: var(--bg-card);
+    outline: none;
+    transition: box-shadow 0.2s ease;
+}
+
+.price-edit-input:focus {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.btn-save-price,
+.btn-cancel-price {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 15px;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.btn-save-price {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    color: var(--success);
+}
+
+.btn-save-price:hover {
+    background: var(--success);
+    color: #fff;
+    transform: scale(1.1);
+}
+
+.btn-cancel-price {
+    background: color-mix(in srgb, var(--danger) 15%, transparent);
+    color: var(--danger);
+}
+
+.btn-cancel-price:hover {
+    background: var(--danger);
+    color: #fff;
+    transform: scale(1.1);
+}
+
 /* --- TOAST NOTIFICATIONS --- */
 .toast-container {
     position: fixed;
